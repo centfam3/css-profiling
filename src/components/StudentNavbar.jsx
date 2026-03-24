@@ -1,0 +1,123 @@
+import { useState, useEffect, useRef } from 'react'
+import { FaBell, FaUserCircle } from 'react-icons/fa'
+import { MdSearch, MdLogout } from 'react-icons/md'
+
+export default function StudentNavbar({ onLogout, notifications = [], unreadCount = 0, onProfileOpen = () => {} }) {
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false)
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const notificationRef = useRef(null)
+  const profileRef = useRef(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setIsNotificationOpen(false)
+      }
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setIsProfileOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  return (
+    <>
+      <div className="h-16 bg-white border-b border-orange-100 px-6 flex items-center justify-between shadow-sm">
+        {/* Left Section */}
+        <div className="flex-1">
+          <p className="text-base font-bold text-black">Student Dashboard</p>
+          <p className="text-xs text-gray-400 mt-0.5">Welcome back to your profile</p>
+        </div>
+
+        {/* Right Section */}
+        <div className="flex items-center gap-4 ml-8">
+          {/* Search Bar */}
+          <div className="flex items-center gap-2 bg-orange-50 border border-orange-100 rounded-xl px-3 py-2 w-52 transition-all duration-200 focus-within:border-orange-400 focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]">
+            <MdSearch className="text-gray-300 text-base" />
+            <input
+              type="text"
+              placeholder="Search..."
+              className="bg-transparent outline-none text-xs text-black placeholder-gray-300 w-full"
+            />
+          </div>
+
+          {/* Notification Bell */}
+          <div className="relative" ref={notificationRef}>
+            <button
+              onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+              className="relative w-9 h-9 rounded-xl border border-orange-100 bg-white flex items-center justify-center hover:bg-orange-50 hover:border-orange-300 transition-all duration-200 cursor-pointer"
+            >
+              <FaBell className="text-gray-500 text-lg" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-semibold border border-white">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+
+            {/* Notification Dropdown */}
+            {isNotificationOpen && (
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden">
+                <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-3 text-white font-semibold flex justify-between items-center">
+                  <span>Notifications</span>
+                  <span className="text-sm">{notifications.length}</span>
+                </div>
+                <div className="max-h-96 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500 text-sm">No notifications</div>
+                  ) : (
+                    notifications.map((notif) => (
+                      <div key={notif.id} className="border-b border-gray-100 px-4 py-3 hover:bg-orange-50 cursor-pointer transition">
+                        <p className="text-sm font-medium text-gray-800">{notif.message}</p>
+                        <p className="text-xs text-gray-400 mt-1">{notif.timestamp}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* User Avatar */}
+          <div className="relative" ref={profileRef}>
+            <button
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+              className="w-9 h-9 rounded-xl bg-orange-500 flex items-center justify-center hover:bg-orange-600 transition-all duration-200 text-white"
+            >
+              <FaUserCircle className="text-lg" />
+            </button>
+
+            {/* Profile Dropdown */}
+            {isProfileOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 z-50">
+                <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-3 text-white">
+                  <p className="font-semibold text-sm">John Doe</p>
+                  <p className="text-xs opacity-90">ST-2024-001</p>
+                </div>
+                <div className="p-4 space-y-3">
+                  <button
+                    onClick={() => {
+                      onProfileOpen()
+                      setIsProfileOpen(false)
+                    }}
+                    className="w-full px-4 py-2 bg-orange-50 text-orange-600 rounded-lg text-sm font-medium hover:bg-orange-100 transition"
+                  >
+                    View Profile
+                  </button>
+                  <button
+                    onClick={onLogout}
+                    className="w-full px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition flex items-center justify-center gap-2"
+                  >
+                    <MdLogout /> Logout
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
