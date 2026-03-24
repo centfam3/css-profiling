@@ -1,33 +1,24 @@
 import { useState } from 'react'
+import { FaUsers, FaCalendarAlt, FaClipboardList, FaEye, FaBullhorn, FaBell } from 'react-icons/fa'
+import { MdLogout, MdDashboard, MdPeople, MdMenuBook, MdCalendarToday, MdBarChart, MdCheckCircle, MdAssignment, MdChat, MdAccountCircle, MdSettings } from 'react-icons/md'
 import { HiMenuAlt2 } from 'react-icons/hi'
-import { MdLogout } from 'react-icons/md'
-import {
-  MdDashboard,
-  MdPeople,
-  MdMenuBook,
-  MdCalendarToday,
-  MdBarChart,
-  MdCheckCircle,
-  MdAssignment,
-  MdNotifications,
-  MdChat,
-  MdAccountCircle,
-  MdSettings,
-} from 'react-icons/md'
 
 const navItems = [
   {
     section: 'Main',
     items: [
-      { label: 'Dashboard', icon: <MdDashboard />, page: 'dashboard' },
-      { label: 'My Students', icon: <MdPeople />, page: 'students' },
-      { label: 'My Subjects', icon: <MdMenuBook />, page: 'subjects' },
-      { label: 'Schedule', icon: <MdCalendarToday />, page: 'schedule' },
+      { label: 'Dashboard Overview', icon: <MdDashboard />, page: 'dashboard' },
+      { label: 'Student Management', icon: <FaUsers />, page: 'students' },
+      { label: 'Event Management', icon: <FaCalendarAlt />, page: 'events' },
+      { label: 'Event Assignment', icon: <FaClipboardList />, page: 'assignment' },
+      { label: 'Event Handler View', icon: <FaEye />, page: 'handler-view' },
+      { label: 'Announcements', icon: <FaBullhorn />, page: 'announcements' },
     ],
   },
   {
     section: 'Academic',
     items: [
+      { label: 'My Subjects', icon: <MdMenuBook />, page: 'subjects' },
       { label: 'Grades', icon: <MdBarChart />, page: 'grades' },
       { label: 'Attendance', icon: <MdCheckCircle />, page: 'attendance' },
       { label: 'Enrollment', icon: <MdAssignment />, page: 'enrollment' },
@@ -36,20 +27,19 @@ const navItems = [
   {
     section: 'Communication',
     items: [
-      { label: 'Announcements', icon: <MdNotifications />, page: 'announcements' },
       { label: 'Messages', icon: <MdChat />, page: 'messages' },
+      { label: 'Notifications', icon: <FaBell />, page: 'notifications' },
     ],
   },
   {
     section: 'Other',
     items: [
-      { label: 'Student Profiles', icon: <MdAccountCircle />, page: 'profiles' },
       { label: 'Settings', icon: <MdSettings />, page: 'settings' },
     ],
   },
 ]
 
-export default function Sidebar({ isCollapsed: externalIsCollapsed, onToggle, activePage, onNavigate }) {
+export default function Sidebar({ isCollapsed: externalIsCollapsed, onToggle, activePage, onNavigate, onLogout }) {
   const [internalCollapsed, setInternalCollapsed] = useState(false)
   const isCollapsed = externalIsCollapsed !== undefined ? externalIsCollapsed : internalCollapsed
 
@@ -156,7 +146,10 @@ export default function Sidebar({ isCollapsed: externalIsCollapsed, onToggle, ac
             </div>
           )}
           {!isCollapsed && (
-            <button className="ml-auto text-gray-300 hover:text-black transition-colors cursor-pointer text-base">
+            <button 
+              onClick={onLogout}
+              className="ml-auto text-gray-300 hover:text-black transition-colors cursor-pointer text-base"
+            >
               <MdLogout size={16} />
             </button>
           )}

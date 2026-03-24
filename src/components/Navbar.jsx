@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
-import { MdSearch, MdNotificationsNone, MdKeyboardArrowDown, MdPerson, MdSettings, MdHelpOutline, MdLogout } from 'react-icons/md'
+import { MdSearch, MdKeyboardArrowDown, MdPerson, MdSettings, MdHelpOutline } from 'react-icons/md'
+import { FaBell } from 'react-icons/fa'
 
-export default function Navbar({ title = 'Faculty Dashboard', subtitle = 'A.Y. 2025–2026 • 2nd Semester', searchPlaceholder = 'Search...' }) {
+export default function Navbar({ title = 'Faculty Dashboard', subtitle = 'A.Y. 2025–2026 • 2nd Semester', searchPlaceholder = 'Search...', onNotificationClick }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const dropdownRef = useRef(null)
 
@@ -43,8 +44,11 @@ export default function Navbar({ title = 'Faculty Dashboard', subtitle = 'A.Y. 2
         </div>
 
         {/* Notification Button */}
-        <button className="relative w-9 h-9 rounded-xl border border-orange-100 bg-white flex items-center justify-center hover:bg-orange-50 hover:border-orange-300 transition-all duration-200 cursor-pointer">
-          <MdNotificationsNone className="text-gray-500 text-lg" />
+        <button 
+          onClick={onNotificationClick}
+          className="relative w-9 h-9 rounded-xl border border-orange-100 bg-white flex items-center justify-center hover:bg-orange-50 hover:border-orange-300 transition-all duration-200 cursor-pointer"
+        >
+          <FaBell className="text-gray-500 text-lg" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full border-2 border-white"></span>
         </button>
 
