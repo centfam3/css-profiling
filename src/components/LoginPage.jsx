@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { MdEmail, MdLock } from 'react-icons/md'
+import { MdEmail, MdLock, MdVisibility, MdVisibilityOff, MdLightbulbOutline } from 'react-icons/md'
 import pnclogo from '../assets/pnclogo.png'
 import ccslogo from '../assets/ccslogo.png'
 
 export default function LoginPage({ onLogin }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleLogin = (e) => {
     e.preventDefault()
@@ -27,6 +27,18 @@ export default function LoginPage({ onLogin }) {
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
+            {/* Helper Box */}
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-[10px] font-bold text-blue-700 uppercase flex items-center gap-1.5">
+                <MdLightbulbOutline className="text-blue-500" />
+                Login Tips
+              </p>
+              <p className="text-[11px] text-blue-600 mt-1">
+                <strong>Students:</strong> Use your email and password created by admin<br/>
+                <strong>Admin:</strong> admin@pnc.edu / admin123
+              </p>
+            </div>
+
             {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-gray-800 mb-3">
@@ -54,14 +66,21 @@ export default function LoginPage({ onLogin }) {
               <div className="relative">
                 <MdLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg" />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   id="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition"
+                  className="w-full pl-12 pr-12 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-orange-500 transition-colors cursor-pointer"
+                >
+                  {showPassword ? <MdVisibilityOff size={20} /> : <MdVisibility size={20} />}
+                </button>
               </div>
             </div>
 
@@ -80,10 +99,6 @@ export default function LoginPage({ onLogin }) {
               Sign In
             </button>
           </form>
-
-          <p className="text-center text-gray-600 text-sm mt-8">
-            Don't have an account? <Link to="/register" className="text-orange-600 hover:text-orange-700 font-semibold">Sign up</Link>
-          </p>
         </div>
       </div>
 

@@ -1,3 +1,5 @@
+import { FaCalendarAlt } from 'react-icons/fa'
+
 const mockAnnouncements = [
   {
     id: 1,
@@ -57,7 +59,10 @@ function AnnouncementCard({ announcement }) {
           {announcement.category}
         </span>
       </div>
-      <p className="text-sm text-gray-500 mb-3">📅 {announcement.date}</p>
+      <p className="text-sm text-gray-500 mb-3 flex items-center gap-1.5">
+        <FaCalendarAlt className="text-gray-400" />
+        {announcement.date}
+      </p>
       <p className="text-gray-700 leading-relaxed">{announcement.content}</p>
     </div>
   )

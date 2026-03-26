@@ -40,7 +40,7 @@ const studentNavItems = [
   },
 ]
 
-export default function StudentSidebar({ isCollapsed: externalIsCollapsed, onToggle, activePage, onNavigate }) {
+export default function StudentSidebar({ isCollapsed: externalIsCollapsed, onToggle, activePage, onNavigate, onLogout }) {
   const [internalCollapsed, setInternalCollapsed] = useState(false)
   const [expandedItems, setExpandedItems] = useState({})
   const isCollapsed = externalIsCollapsed !== undefined ? externalIsCollapsed : internalCollapsed
@@ -155,7 +155,10 @@ export default function StudentSidebar({ isCollapsed: externalIsCollapsed, onTog
 
       {/* Logout Button */}
       <div className="border-t border-orange-100 p-3">
-        <button className="w-full mx-0 px-3 py-2 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 flex items-center justify-center gap-2.5 transition-all duration-200">
+        <button 
+          onClick={onLogout}
+          className="w-full mx-0 px-3 py-2 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 flex items-center justify-center gap-2.5 transition-all duration-200 cursor-pointer"
+        >
           <FaSignOutAlt size={14} />
           {!isCollapsed && <span className="text-sm">Logout</span>}
         </button>

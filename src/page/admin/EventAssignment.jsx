@@ -1,14 +1,37 @@
-import React, { useState, useMemo } from 'react';
-import { FaSearch, FaCalendarAlt, FaMapMarkerAlt, FaUsers, FaPlus, FaTimes, FaExclamationTriangle, FaCheckCircle, FaFilter } from 'react-icons/fa';
-import { MOCK_EVENTS, MOCK_STUDENTS } from '../../constants/mockData';
+import React, { useState, useMemo, useEffect } from 'react';
+import axios from 'axios';
+import { FaSearch, FaCalendarAlt, FaMapMarkerAlt, FaUsers, FaPlus, FaTimes, FaExclamationTriangle, FaCheckCircle, FaFilter, FaLaptopCode, FaBookOpen } from 'react-icons/fa';
 
 export default function EventAssignment() {
-  const [events, setEvents] = useState(MOCK_EVENTS);
-  const [students, setStudents] = useState(MOCK_STUDENTS);
-  const [selectedEventId, setSelectedEventId] = useState(events[0]?.id || '');
+  const [events, setEvents] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [selectedEventId, setSelectedEventId] = useState('');
+  const [loading, setLoading] = useState(true);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSkill, setFilterSkill] = useState('');
+
+  // Fetch events and students from backend
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [eventsRes, studentsRes] = await Promise.all([
+          axios.get('http://localhost:5000/api/events'),
+          axios.get('http://localhost:5000/api/students')
+        ]);
+        setEvents(eventsRes.data);
+        setStudents(studentsRes.data);
+        if (eventsRes.data.length > 0) {
+          setSelectedEventId(eventsRes.data[0].id);
+        }
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   // Get current selected event
   const selectedEvent = useMemo(() => 
@@ -26,15 +49,16 @@ export default function EventAssignment() {
   const candidateStudents = useMemo(() => {
     return students.filter(student => {
       const isAlreadyAssigned = selectedEvent?.participants.includes(student.id);
-      const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      const fullName = `${student.firstName} ${student.lastName}`.toLowerCase();
+      const matchesSearch = fullName.includes(searchTerm.toLowerCase()) || 
                             student.id.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesSkill = filterSkill === '' || student.skills.some(s => s.toLowerCase().includes(filterSkill.toLowerCase()));
+      const matchesSkill = filterSkill === '' || student.skills?.some(s => s.name?.toLowerCase().includes(filterSkill.toLowerCase()) || s?.toLowerCase?.().includes(filterSkill.toLowerCase()));
       
       return !isAlreadyAssigned && matchesSearch && matchesSkill;
     });
   }, [students, selectedEvent, searchTerm, filterSkill]);
 
-  const handleAssign = (student) => {
+  const handleAssign = async (student) => {
     if (selectedEvent.participants.length >= selectedEvent.maxParticipants) {
       alert("Maximum participants reached for this event!");
       return;
@@ -47,37 +71,52 @@ export default function EventAssignment() {
     );
 
     if (sameDateEvent) {
-      if (!confirm(`${student.name} is already assigned to "${sameDateEvent.name}" on ${selectedEvent.date}. Assign anyway?`)) {
+      if (!confirm(`${student.firstName} ${student.lastName} is already assigned to "${sameDateEvent.name}" on ${selectedEvent.date}. Assign anyway?`)) {
         return;
       }
     }
 
-    setEvents(prev => prev.map(e => 
-      e.id === selectedEventId 
-        ? { ...e, participants: [...e.participants, student.id] } 
-        : e
-    ));
-    
-    setStudents(prev => prev.map(s => 
-      s.id === student.id 
-        ? { ...s, assignedEvents: [...(s.assignedEvents || []), selectedEventId] } 
-        : s
-    ));
+    try {
+      const response = await axios.post(`http://localhost:5000/api/events/${selectedEventId}/register`, {
+        studentId: student.id
+      });
+      
+      // Update local state
+      setEvents(prev => prev.map(e => 
+        e.id === selectedEventId ? response.data : e
+      ));
+    } catch (error) {
+      console.error('Error assigning student:', error);
+      alert('Error assigning student: ' + (error.response?.data?.message || error.message));
+    }
   };
 
-  const handleRemove = (studentId) => {
-    setEvents(prev => prev.map(e => 
-      e.id === selectedEventId 
-        ? { ...e, participants: e.participants.filter(id => id !== studentId) } 
-        : e
-    ));
-    
-    setStudents(prev => prev.map(s => 
-      s.id === studentId 
-        ? { ...s, assignedEvents: s.assignedEvents.filter(id => id !== selectedEventId) } 
-        : s
-    ));
+  const handleRemove = async (studentId) => {
+    try {
+      const response = await axios.post(`http://localhost:5000/api/events/${selectedEventId}/unregister`, {
+        studentId: studentId
+      });
+      
+      // Update local state
+      setEvents(prev => prev.map(e => 
+        e.id === selectedEventId ? response.data : e
+      ));
+    } catch (error) {
+      console.error('Error removing student:', error);
+      alert('Error removing student: ' + (error.response?.data?.message || error.message));
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-indigo-50 to-orange-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-semibold">Loading events and students...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 animate-fadeIn h-[calc(100vh-12rem)] overflow-hidden">
@@ -92,6 +131,7 @@ export default function EventAssignment() {
               onChange={(e) => setSelectedEventId(e.target.value)}
               className="w-full pl-11 pr-4 py-3 bg-indigo-50 border border-indigo-100 rounded-xl text-sm font-bold text-indigo-900 focus:ring-4 focus:ring-indigo-100 outline-none cursor-pointer appearance-none"
             >
+              <option value="">Select an event...</option>
               {events.map(event => (
                 <option key={event.id} value={event.id}>{event.name}</option>
               ))}
@@ -164,20 +204,28 @@ export default function EventAssignment() {
                   <tr key={student.id} className="hover:bg-red-50/30 transition-colors group">
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">
-                          {student.name.charAt(0)}
+                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                          {student.firstName.charAt(0)}
                         </div>
-                        <div>
-                          <p className="text-xs font-bold text-gray-800">{student.name}</p>
-                          <p className="text-[10px] text-gray-400">{student.id}</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-gray-800 truncate">{student.firstName} {student.lastName}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[9px] text-gray-400 flex items-center gap-1">
+                              <FaLaptopCode size={10} /> {student.personalInfo?.course}
+                            </span>
+                            <span className="text-gray-300">•</span>
+                            <span className="text-[9px] text-gray-400 flex items-center gap-1">
+                              <FaBookOpen size={10} /> {student.personalInfo?.yearLevel}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-3">
                       <div className="flex gap-1">
-                        {student.skills.slice(0, 2).map(skill => (
-                          <span key={skill} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full text-[9px] font-bold">
-                            {skill}
+                        {student.skills?.slice(0, 2).map((skill, idx) => (
+                          <span key={idx} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full text-[9px] font-bold">
+                            {skill.name || skill}
                           </span>
                         ))}
                       </div>
@@ -245,10 +293,10 @@ export default function EventAssignment() {
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center font-bold text-sm group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
-                        {student.name.charAt(0)}
+                        {student.firstName.charAt(0)}
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-gray-800">{student.name}</p>
+                        <p className="text-sm font-bold text-gray-800">{student.firstName} {student.lastName}</p>
                         <p className="text-[10px] text-gray-400 font-medium">{student.id}</p>
                       </div>
                     </div>
@@ -261,17 +309,21 @@ export default function EventAssignment() {
                     </button>
                   </div>
                   <div className="flex flex-wrap gap-1.5 mb-3">
-                    {student.skills.map(skill => (
-                      <span key={skill} className="px-2 py-0.5 bg-gray-50 text-gray-500 rounded-full text-[9px] font-bold border border-gray-100 group-hover:border-indigo-100 group-hover:text-indigo-600 transition-colors">
-                        {skill}
+                    {student.skills?.map((skill, idx) => (
+                      <span key={idx} className="px-2 py-0.5 bg-gray-50 text-gray-500 rounded-full text-[9px] font-bold border border-gray-100 group-hover:border-indigo-100 group-hover:text-indigo-600 transition-colors">
+                        {skill.name || skill}
                       </span>
                     ))}
                   </div>
-                  {student.achievements.academic.length > 0 && (
-                    <p className="text-[9px] text-yellow-600 flex items-center gap-1 font-bold italic">
-                      🏆 {student.achievements.academic[0]}
-                    </p>
-                  )}
+                  <div className="flex items-center gap-2 mt-auto pt-3 border-t border-gray-50 group-hover:border-indigo-50 transition-colors">
+                    <span className="text-[9px] text-gray-500 flex items-center gap-1">
+                      <FaLaptopCode className="text-indigo-400" size={10} /> {student.personalInfo?.course}
+                    </span>
+                    <span className="text-gray-300">•</span>
+                    <span className="text-[9px] text-gray-500 flex items-center gap-1">
+                      <FaBookOpen className="text-indigo-400" size={10} /> {student.personalInfo?.yearLevel}
+                    </span>
+                  </div>
                 </div>
               ))}
               {candidateStudents.length === 0 && (

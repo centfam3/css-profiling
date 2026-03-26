@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { FaBell, FaUserCircle } from 'react-icons/fa'
 import { MdSearch, MdLogout } from 'react-icons/md'
 
-export default function StudentNavbar({ onLogout, notifications = [], unreadCount = 0, onProfileOpen = () => {} }) {
+export default function StudentNavbar({ onLogout, notifications = [], unreadCount = 0, onProfileOpen = () => {}, user }) {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const notificationRef = useRef(null)
@@ -28,7 +28,7 @@ export default function StudentNavbar({ onLogout, notifications = [], unreadCoun
         {/* Left Section */}
         <div className="flex-1">
           <p className="text-base font-bold text-black">Student Dashboard</p>
-          <p className="text-xs text-gray-400 mt-0.5">Welcome back to your profile</p>
+          <p className="text-xs text-gray-400 mt-0.5">Welcome back, {user?.firstName}!</p>
         </div>
 
         {/* Right Section */}
@@ -93,8 +93,8 @@ export default function StudentNavbar({ onLogout, notifications = [], unreadCoun
             {isProfileOpen && (
               <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 z-50">
                 <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-3 text-white">
-                  <p className="font-semibold text-sm">John Doe</p>
-                  <p className="text-xs opacity-90">ST-2024-001</p>
+                  <p className="font-semibold text-sm">{user?.firstName} {user?.lastName}</p>
+                  <p className="text-xs opacity-90">{user?.id}</p>
                 </div>
                 <div className="p-4 space-y-3">
                   <button
@@ -102,16 +102,18 @@ export default function StudentNavbar({ onLogout, notifications = [], unreadCoun
                       onProfileOpen()
                       setIsProfileOpen(false)
                     }}
-                    className="w-full px-4 py-2 bg-orange-50 text-orange-600 rounded-lg text-sm font-medium hover:bg-orange-100 transition"
+                    className="w-full flex items-center gap-3 text-gray-600 hover:text-orange-600 transition text-sm font-medium"
                   >
-                    View Profile
+                    <FaUserCircle /> My Profile
                   </button>
-                  <button
-                    onClick={onLogout}
-                    className="w-full px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition flex items-center justify-center gap-2"
-                  >
-                    <MdLogout /> Logout
-                  </button>
+                  <div className="border-t border-gray-100 pt-3">
+                    <button 
+                      onClick={onLogout}
+                      className="w-full flex items-center gap-3 text-red-500 hover:text-red-600 transition text-sm font-medium"
+                    >
+                      <MdLogout /> Sign Out
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

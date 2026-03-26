@@ -1,9 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { FaUserPlus, FaCalendarPlus, FaEdit, FaBullhorn, FaCheckCircle, FaTrash, FaCheckDouble, FaBell } from 'react-icons/fa';
-import { MOCK_NOTIFICATIONS } from '../../constants/mockData';
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState([]);
   const [filterType, setFilterType] = useState('All');
 
   const filteredNotifications = useMemo(() => {

@@ -1,0 +1,19 @@
+[
+  {
+    "id": "EVT1774491717157",
+    "name": "Programming Python",
+    "date": "2026-03-22",
+    "time": "10:24",
+    "venue": "Dddadad",
+    "category": "Academic",
+    "description": "addada",
+    "maxParticipants": 50,
+    "participants": [
+      "s009",
+      "s1774488629718",
+      "2201587"
+    ],
+    "createdAt": "2026-03-26T02:21:57.157Z",
+    "status": "Active"
+  }
+]

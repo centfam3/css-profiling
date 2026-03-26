@@ -1,10 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
-import { MdSearch, MdKeyboardArrowDown, MdPerson, MdSettings, MdHelpOutline } from 'react-icons/md'
+import { MdSearch, MdKeyboardArrowDown, MdPerson, MdSettings, MdHelpOutline, MdLogout } from 'react-icons/md'
 import { FaBell } from 'react-icons/fa'
 
-export default function Navbar({ title = 'Faculty Dashboard', subtitle = 'A.Y. 2025–2026 • 2nd Semester', searchPlaceholder = 'Search...', onNotificationClick }) {
+export default function Navbar({ title = 'Faculty Dashboard', subtitle = 'A.Y. 2025–2026 • 2nd Semester', searchPlaceholder = 'Search...', onNotificationClick, user, onLogout }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const dropdownRef = useRef(null)
+
+  const getInitials = (name) => {
+    if (!name) return 'A'
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
+  }
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -61,28 +66,28 @@ export default function Navbar({ title = 'Faculty Dashboard', subtitle = 'A.Y. 2
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl border border-orange-100 bg-white cursor-pointer hover:bg-orange-50 hover:border-orange-300 transition-all duration-200"
           >
-            <div className="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold">
-              JD
+            <div className="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center text-white text-[10px] font-bold">
+              {user?.name ? getInitials(user.name) : 'A'}
             </div>
-            <div className="text-left">
-              <p className="text-xs font-semibold text-black">John Doe</p>
-              <p className="text-[10px] text-gray-400">Faculty</p>
+            <div className="text-left hidden sm:block">
+              <p className="text-xs font-semibold text-black truncate max-w-[100px]">{user?.name || 'Admin'}</p>
+              <p className="text-[10px] text-gray-400 capitalize">{user?.role || 'Faculty'}</p>
             </div>
             <MdKeyboardArrowDown className={`text-gray-300 text-sm transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {/* Dropdown Menu */}
           {isDropdownOpen && (
-            <div className="absolute top-14 right-0 w-56 bg-white rounded-xl border border-orange-100 shadow-xl shadow-orange-100/50 z-50 overflow-hidden">
+            <div className="absolute top-14 right-0 w-56 bg-white rounded-xl border border-orange-100 shadow-xl shadow-orange-100/50 z-50 overflow-hidden animate-fadeIn">
               {/* Header */}
-              <div className="px-4 py-3 border-b border-orange-50">
+              <div className="px-4 py-3 border-b border-orange-50 bg-orange-50/30">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold text-sm">
-                    JD
+                    {user?.name ? getInitials(user.name) : 'A'}
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-black">John Doe</p>
-                    <p className="text-xs text-gray-400">john@example.com</p>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-black truncate">{user?.name || 'Admin User'}</p>
+                    <p className="text-[10px] text-gray-400 truncate">{user?.email || 'admin@example.com'}</p>
                   </div>
                 </div>
               </div>
@@ -92,7 +97,10 @@ export default function Navbar({ title = 'Faculty Dashboard', subtitle = 'A.Y. 2
                 {dropdownItems.map((item, idx) => (
                   <button
                     key={idx}
-                    onClick={item.onClick}
+                    onClick={() => {
+                      item.onClick();
+                      setIsDropdownOpen(false);
+                    }}
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-600 hover:bg-orange-50 hover:text-black transition-all cursor-pointer"
                   >
                     {item.icon}
@@ -105,7 +113,13 @@ export default function Navbar({ title = 'Faculty Dashboard', subtitle = 'A.Y. 2
               <div className="border-t border-orange-100 my-1"></div>
 
               {/* Logout */}
-              <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-all cursor-pointer">
+              <button 
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  onLogout();
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-all cursor-pointer"
+              >
                 <MdLogout size={16} />
                 <span>Log out</span>
               </button>

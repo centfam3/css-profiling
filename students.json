@@ -1,0 +1,181 @@
+[
+  {
+    "id": "s009",
+    "firstName": "CENT",
+    "lastName": "BORA",
+    "password": "password123",
+    "photo": "",
+    "personalInfo": {
+      "birthdate": "2006-04-29",
+      "gender": "Male",
+      "address": "Tacloban",
+      "contact": "0917-444-5555",
+      "email": "daniel.p@email.com",
+      "course": "IT",
+      "yearLevel": "3rd Year"
+    },
+    "academicHistory": [
+      {
+        "year": "2023-2024",
+        "gradeLevel": "3rd Year",
+        "gpa": 87,
+        "awards": []
+      }
+    ],
+    "nonAcademicActivities": [
+      {
+        "name": "Music Club",
+        "role": "Vocalist",
+        "year": "2024"
+      }
+    ],
+    "violations": [
+      {
+        "description": "Fighting",
+        "date": "2024-04-12",
+        "severity": "Severe"
+      }
+    ],
+    "skills": [
+      "Basketball",
+      "Programming",
+      "Painting"
+    ],
+    "affiliations": []
+  },
+  {
+    "id": "s1774488629718",
+    "firstName": "ada",
+    "lastName": "adad",
+    "password": "cent123",
+    "photo": "",
+    "personalInfo": {
+      "birthdate": "2004-02-01",
+      "gender": "Male",
+      "address": "adada",
+      "contact": "09121212",
+      "email": "cent@gmail.com",
+      "course": "IT",
+      "yearLevel": "4th Year"
+    },
+    "academicHistory": [
+      {
+        "year": "",
+        "gradeLevel": "Grade 7",
+        "gpa": "",
+        "awards": []
+      }
+    ],
+    "nonAcademicActivities": [
+      {
+        "name": "",
+        "role": "",
+        "year": ""
+      }
+    ],
+    "violations": [
+      {
+        "description": "",
+        "date": "",
+        "severity": "Minor"
+      }
+    ],
+    "skills": [
+      "Proggraming",
+      "Typing"
+    ],
+    "affiliations": []
+  },
+  {
+    "id": "s1774489559267",
+    "firstName": "Paolo",
+    "lastName": "Roms",
+    "password": "pao123",
+    "photo": "",
+    "personalInfo": {
+      "birthdate": "2006-04-01",
+      "gender": "Male",
+      "address": "adada",
+      "contact": "0921228382",
+      "email": "pao@gmail.com",
+      "course": "CS",
+      "yearLevel": "2nd Year"
+    },
+    "academicHistory": [
+      {
+        "year": "ada",
+        "gradeLevel": "2nd Year",
+        "gpa": "",
+        "awards": []
+      }
+    ],
+    "nonAcademicActivities": [
+      {
+        "name": "DADA",
+        "role": "adad",
+        "year": ""
+      },
+      {
+        "name": "",
+        "role": "",
+        "year": ""
+      },
+      {
+        "name": "",
+        "role": "",
+        "year": ""
+      }
+    ],
+    "violations": [
+      {
+        "description": "None",
+        "date": "2026-03-06",
+        "severity": "Minor"
+      }
+    ],
+    "skills": [],
+    "affiliations": []
+  },
+  {
+    "id": "2201587",
+    "firstName": "rtktkr",
+    "lastName": "jfgnjf",
+    "password": "12345",
+    "photo": "",
+    "personalInfo": {
+      "birthdate": "2008-03-01",
+      "gender": "Male",
+      "address": "gktmgktg",
+      "contact": "09294924",
+      "email": "male@gmail.com",
+      "course": "IT",
+      "yearLevel": "1st Year"
+    },
+    "academicHistory": [],
+    "nonAcademicActivities": [],
+    "violations": [],
+    "skills": [],
+    "affiliations": []
+  },
+  {
+    "id": "220199",
+    "firstName": "cent",
+    "lastName": "fam",
+    "password": "12345",
+    "photo": "",
+    "personalInfo": {
+      "birthdate": "2006-03-01",
+      "gender": "Male",
+      "address": "kadkmldkjkmamkd",
+      "contact": "091212121",
+      "email": "cent3@gmail.com",
+      "course": "IT",
+      "yearLevel": "4th Year"
+    },
+    "academicHistory": [],
+    "nonAcademicActivities": [],
+    "violations": [],
+    "skills": [],
+    "affiliations": []
+  }
+]

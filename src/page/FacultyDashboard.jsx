@@ -1,11 +1,11 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import axios from 'axios'
 import Sidebar from '../components/Sidebar'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import NotificationDropdown from '../components/admin/NotificationDropdown'
-import { MOCK_NOTIFICATIONS, MOCK_STUDENTS, MOCK_EVENTS } from '../constants/mockData'
 import StatCard from '../components/admin/StatCard'
-import { FaUserGraduate, FaCalendarCheck, FaRunning, FaClock } from 'react-icons/fa'
+import { FaUserGraduate, FaCalendarCheck, FaRunning, FaClock, FaLaptopCode, FaBookOpen } from 'react-icons/fa'
 
 // Admin Pages
 import StudentManagement from './admin/StudentManagement'
@@ -15,11 +15,35 @@ import EventHandlerView from './admin/EventHandlerView'
 import Announcements from './admin/Announcements'
 import NotificationsPage from './admin/NotificationsPage'
 
-export default function FacultyDashboard({ onLogout }) {
+export default function FacultyDashboard({ user, onLogout }) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [activePage, setActivePage] = useState('dashboard')
   const [isNotificationOpen, setIsNotificationOpen] = useState(false)
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS)
+  const [notifications, setNotifications] = useState([])
+  const [students, setStudents] = useState([])
+  const [events, setEvents] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  // Fetch data from backend
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [studentsRes, eventsRes] = await Promise.all([
+          axios.get('http://localhost:5000/api/students'),
+          axios.get('http://localhost:5000/api/events')
+        ]);
+        setStudents(studentsRes.data)
+        setEvents(eventsRes.data)
+        setLoading(false)
+      } catch (error) {
+        console.error('Error fetching data:', error)
+        setStudents([])
+        setEvents([])
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [])
 
   const handleMarkAsRead = (id) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))
@@ -42,12 +66,29 @@ export default function FacultyDashboard({ onLogout }) {
     }
   }, [activePage])
 
-  const stats = [
-    { label: 'Total Students', value: MOCK_STUDENTS.length, icon: FaUserGraduate, color: 'blue' },
-    { label: 'Total Events', value: MOCK_EVENTS.length, icon: FaCalendarCheck, color: 'indigo' },
-    { label: 'Active Participants', value: 42, icon: FaRunning, color: 'green' },
-    { label: 'Upcoming Events', value: 3, icon: FaClock, color: 'yellow' },
-  ];
+  const stats = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const upcomingEventsCount = events.filter(event => {
+      const eventDate = new Date(event.date);
+      return eventDate >= today;
+    }).length;
+
+    const activeParticipantIds = new Set();
+    events.forEach(event => {
+      if (event.participants) {
+        event.participants.forEach(id => activeParticipantIds.add(id));
+      }
+    });
+
+    return [
+      { label: 'Total Students', value: students.length, icon: FaUserGraduate, color: 'blue' },
+      { label: 'Total Events', value: events.length, icon: FaCalendarCheck, color: 'indigo' },
+      { label: 'Active Participants', value: activeParticipantIds.size, icon: FaRunning, color: 'green' },
+      { label: 'Upcoming Events', value: upcomingEventsCount, icon: FaClock, color: 'yellow' },
+    ];
+  }, [students, events]);
 
   const renderDashboard = () => (
     <div className="space-y-8 animate-fadeIn">
@@ -75,24 +116,38 @@ export default function FacultyDashboard({ onLogout }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {MOCK_STUDENTS.slice(0, 5).map((student) => (
+                {students.slice(0, 5).map((student) => (
                   <tr key={student.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">
-                          {student.name.charAt(0)}
+                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                          {student.firstName.charAt(0)}
                         </div>
-                        <span className="text-sm font-medium text-gray-800">{student.name}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-800 truncate">{student.firstName} {student.lastName}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                              <FaLaptopCode size={10} /> {student.personalInfo?.course}
+                            </span>
+                            <span className="text-gray-300">•</span>
+                            <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                              <FaBookOpen size={10} /> {student.personalInfo?.yearLevel}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">{student.id}</td>
                     <td className="px-6 py-4">
                       <div className="flex gap-1 flex-wrap">
-                        {student.skills.slice(0, 2).map((skill) => (
+                        {student.skills?.slice(0, 2).map((skill) => (
                           <span key={skill} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-semibold">
                             {skill}
                           </span>
                         ))}
+                        {student.skills?.length > 2 && (
+                          <span className="text-[10px] text-gray-400 font-bold">+{student.skills.length - 2}</span>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -106,26 +161,42 @@ export default function FacultyDashboard({ onLogout }) {
         <div className="bg-white rounded-xl shadow-md overflow-hidden">
           <div className="p-5 border-b border-gray-100 flex justify-between items-center">
             <h3 className="font-bold text-gray-800">Upcoming Events</h3>
-            <button className="text-indigo-600 text-sm font-semibold hover:underline">View All</button>
+            <button 
+              onClick={() => setActivePage('events')}
+              className="text-indigo-600 text-sm font-semibold hover:underline cursor-pointer"
+            >
+              View All
+            </button>
           </div>
           <div className="p-5 space-y-4">
-            {MOCK_EVENTS.map((event) => (
-              <div key={event.id} className="flex items-center gap-4 p-3 rounded-lg border border-gray-50 hover:border-indigo-100 hover:bg-indigo-50/30 transition-all">
-                <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex flex-col items-center justify-center">
-                  <span className="text-xs font-bold uppercase">{event.date.split('-')[1]}</span>
-                  <span className="text-lg font-bold leading-tight">{event.date.split('-')[2]}</span>
+            {events.filter(e => new Date(e.date) >= new Date().setHours(0,0,0,0)).length > 0 ? (
+              events
+                .filter(e => new Date(e.date) >= new Date().setHours(0,0,0,0))
+                .sort((a, b) => new Date(a.date) - new Date(b.date))
+                .slice(0, 5)
+                .map((event) => (
+                  <div key={event.id} className="flex items-center gap-4 p-3 rounded-lg border border-gray-50 hover:border-indigo-100 hover:bg-indigo-50/30 transition-all">
+                    <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex flex-col items-center justify-center font-bold">
+                      <span className="text-[10px] uppercase leading-none">{new Date(event.date).toLocaleDateString('en-US', { month: 'short' })}</span>
+                      <span className="text-sm leading-none">{new Date(event.date).getDate()}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-gray-800 text-sm truncate">{event.name}</p>
+                      <p className="text-xs text-gray-500 truncate">{event.venue} • {event.time}</p>
+                    </div>
+                    <span className="px-2 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-bold whitespace-nowrap">
+                      {event.participants?.length || 0} Joined
+                    </span>
+                  </div>
+                ))
+            ) : (
+              <div className="text-center py-10">
+                <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <FaClock className="text-gray-300 text-xl" />
                 </div>
-                <div className="flex-1">
-                  <p className="font-bold text-gray-800 text-sm">{event.name}</p>
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <FaClock className="text-[10px]" /> {event.time} • {event.venue}
-                  </p>
-                </div>
-                <span className="px-2 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-bold">
-                  {event.category}
-                </span>
+                <p className="text-gray-400 text-sm font-medium">No upcoming events scheduled</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>
@@ -154,6 +225,7 @@ export default function FacultyDashboard({ onLogout }) {
         activePage={activePage}
         onNavigate={setActivePage}
         onLogout={onLogout}
+        user={user}
       />
 
       {/* Main Content */}
@@ -165,6 +237,8 @@ export default function FacultyDashboard({ onLogout }) {
             subtitle="A.Y. 2025–2026 • 2nd Semester"
             searchPlaceholder="Search students, events, or announcements..."
             onNotificationClick={() => setIsNotificationOpen(!isNotificationOpen)}
+            user={user}
+            onLogout={onLogout}
           />
           <NotificationDropdown 
             isOpen={isNotificationOpen}

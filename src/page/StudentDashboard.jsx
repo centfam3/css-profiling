@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import StudentSidebar from '../components/StudentSidebar'
 import StudentNavbar from '../components/StudentNavbar'
 import Footer from '../components/Footer'
@@ -6,7 +7,7 @@ import ProfileModal from '../components/ProfileModal'
 import MyAchievements from '../components/MyAchievements'
 import EventParticipation from '../components/EventParticipation'
 import StudentAnnouncements from '../components/StudentAnnouncements'
-import { FaGraduationCap, FaTrophy, FaCalendarAlt, FaBullhorn, FaClock, FaMapPin } from 'react-icons/fa'
+import { FaGraduationCap, FaTrophy, FaCalendarAlt, FaBullhorn, FaClock, FaMapPin, FaUser } from 'react-icons/fa'
 
 const mockNotifications = [
   { id: 1, message: 'Your achievement "Dean\'s List" has been approved', timestamp: '2 hours ago' },
@@ -14,7 +15,8 @@ const mockNotifications = [
   { id: 3, message: 'Reminder: Enrollment deadline is tomorrow', timestamp: '1 day ago' },
 ]
 
-export default function StudentDashboard() {
+export default function StudentDashboard({ user, onLogout }) {
+  const navigate = useNavigate()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [activePage, setActivePage] = useState('home')
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
@@ -22,19 +24,19 @@ export default function StudentDashboard() {
   const renderPage = () => {
     switch (activePage) {
       case 'home':
-        return <DashboardHome />
+        return <DashboardHome student={user} onViewProfile={() => navigate('/student-profile')} />
       case 'achievements':
       case 'achievements-academic':
       case 'achievements-sports':
-        return <MyAchievements />
+        return <MyAchievements student={user} />
       case 'events':
       case 'events-available':
       case 'events-assigned':
-        return <EventParticipation />
+        return <EventParticipation student={user} />
       case 'announcements':
         return <StudentAnnouncements />
       default:
-        return <DashboardHome />
+        return <DashboardHome student={user} onViewProfile={() => navigate('/student-profile')} />
     }
   }
 
@@ -46,6 +48,7 @@ export default function StudentDashboard() {
         onToggle={() => setIsCollapsed(!isCollapsed)}
         activePage={activePage}
         onNavigate={setActivePage}
+        onLogout={onLogout}
       />
 
       {/* Main Content */}
@@ -54,7 +57,9 @@ export default function StudentDashboard() {
         <StudentNavbar
           notifications={mockNotifications}
           unreadCount={3}
+          user={user}
           onProfileOpen={() => setIsProfileModalOpen(true)}
+          onLogout={onLogout}
         />
 
         {/* Main Content Area */}
@@ -66,48 +71,63 @@ export default function StudentDashboard() {
       <ProfileModal
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
+        student={user}
       />
     </div>
   )
 }
 
-function DashboardHome() {
+function DashboardHome({ student, onViewProfile }) {
+  // Get student's actual data, with fallback values
+  const firstName = student?.firstName || 'Student';
+  const gradeLevelData = student?.academicHistory?.[0];
+  const gpaData = gradeLevelData?.gpa || 'N/A';
+  const yearLevel = student?.personalInfo?.yearLevel || 'N/A';
+
   const studentStats = [
     {
-      title: 'My Achievements',
-      count: 7,
-      icon: <FaTrophy className="text-2xl text-yellow-500" />,
-      color: 'bg-yellow-50',
-      link: 'achievements',
-    },
-    {
-      title: 'Pending Approvals',
-      count: 2,
+      title: 'Latest GPA',
+      count: gpaData,
       icon: <FaGraduationCap className="text-2xl text-blue-500" />,
       color: 'bg-blue-50',
       link: 'achievements',
     },
     {
-      title: 'Upcoming Events',
-      count: 4,
-      icon: <FaCalendarAlt className="text-2xl text-green-500" />,
+      title: 'Skills',
+      count: student?.skills?.length || 0,
+      icon: <FaTrophy className="text-2xl text-yellow-500" />,
+      color: 'bg-yellow-50',
+      link: 'achievements',
+    },
+    {
+      title: 'Activities',
+      count: student?.nonAcademicActivities?.length || 0,
+      icon: <FaClock className="text-2xl text-green-500" />,
       color: 'bg-green-50',
       link: 'events',
     },
     {
-      title: 'Recent Announcements',
-      count: 5,
-      icon: <FaBullhorn className="text-2xl text-orange-500" />,
-      color: 'bg-orange-50',
+      title: 'Year Level',
+      count: yearLevel,
+      icon: <FaCalendarAlt className="text-2xl text-purple-500" />,
+      color: 'bg-purple-50',
       link: 'announcements',
     },
   ]
 
   return (
     <div>
-      <section className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">Welcome Back, John! 👋</h1>
-        <p className="text-gray-600">Here's your academic progress and upcoming activities</p>
+      <section className="mb-8 flex justify-between items-start">
+        <div>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Welcome Back, {firstName}! 👋</h1>
+          <p className="text-gray-600">Student ID: <span className="font-semibold">{student?.id}</span> • Course: <span className="font-semibold text-indigo-600">{student?.personalInfo?.course === 'IT' ? 'IT' : 'CS'}</span> • Year Level: <span className="font-semibold text-purple-600">{student?.personalInfo?.yearLevel || 'N/A'}</span></p>
+        </div>
+        <button 
+          onClick={onViewProfile}
+          className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all font-semibold flex items-center gap-2 shadow-lg hover:shadow-xl"
+        >
+          <FaUser size={16} /> View Full Profile
+        </button>
       </section>
 
       {/* Stats Grid */}
@@ -123,90 +143,77 @@ function DashboardHome() {
         ))}
       </div>
 
-      {/* Quick Links */}
+      {/* Quick Overview Sections */}
       <section className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Quick Overview</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Your Information</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Recent Achievements */}
+          {/* Personal Info */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <FaTrophy className="text-yellow-500" /> Latest Achievements
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Details</h3>
             <div className="space-y-3">
-              {[
-                { title: "Dean's List Recognition", status: 'approved' },
-                { title: 'Programming Competition Winner', status: 'approved' },
-                { title: 'Outstanding Thesis Defense', status: 'pending' },
-              ].map((achievement, idx) => (
-                <div key={idx} className="flex items-start gap-3 pb-3 border-b border-gray-100 last:border-0 last:pb-0">
-                  <span
-                    className={`inline-block w-2 h-2 rounded-full mt-1.5 ${
-                      achievement.status === 'approved' ? 'bg-green-500' : 'bg-yellow-500'
-                    }`}
-                  ></span>
-                  <div>
-                    <p className="font-medium text-gray-800">{achievement.title}</p>
-                    <p className={`text-xs font-semibold uppercase ${achievement.status === 'approved' ? 'text-green-600' : 'text-yellow-600'}`}>
-                      {achievement.status}
-                    </p>
-                  </div>
-                </div>
-              ))}
+              <div>
+                <p className="text-xs text-gray-400 uppercase font-semibold">Email</p>
+                <p className="text-sm font-medium text-gray-700 mt-1">{student?.personalInfo?.email || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 uppercase font-semibold">Gender</p>
+                <p className="text-sm font-medium text-gray-700 mt-1">{student?.personalInfo?.gender || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 uppercase font-semibold">Contact</p>
+                <p className="text-sm font-medium text-gray-700 mt-1">{student?.personalInfo?.contact || 'N/A'}</p>
+              </div>
             </div>
           </div>
 
-          {/* Upcoming Events */}
+          {/* Skills List */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <FaCalendarAlt className="text-green-500" /> Upcoming Events
-            </h3>
-            <div className="space-y-3">
-              {[
-                { name: 'Tech Summit 2024', date: 'May 15' },
-                { name: 'Science Fair & Exhibition', date: 'May 20' },
-                { name: 'Sports Day 2024', date: 'June 1' },
-              ].map((event, idx) => (
-                <div key={idx} className="flex items-start justify-between pb-3 border-b border-gray-100 last:border-0 last:pb-0">
-                  <div>
-                    <p className="font-medium text-gray-800">{event.name}</p>
-                    <p className="text-sm text-gray-500 flex items-center gap-1"><FaCalendarAlt className="inline text-green-500" /> {event.date}</p>
-                  </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Skills</h3>
+            <div className="space-y-2">
+              {student?.skills && student.skills.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {student.skills.map((skill, idx) => (
+                    <span key={idx} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-xs font-semibold border border-indigo-100">
+                      {skill}
+                    </span>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <p className="text-sm text-gray-500 italic">No skills added yet</p>
+              )}
             </div>
           </div>
         </div>
       </section>
 
-      {/* Recent Announcements */}
-      <section>
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Recent Announcements</h2>
-        <div className="space-y-3">
-          {[
-            {
-              title: 'Mid-Year Semester Break Schedule',
-              date: 'April 5, 2024',
-              category: 'Academic',
-            },
-            {
-              title: 'New Library Extended Hours',
-              date: 'April 3, 2024',
-              category: 'Notice',
-            },
-          ].map((announcement, idx) => (
-            <div key={idx} className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-semibold text-gray-900">{announcement.title}</p>
-                  <p className="text-sm text-gray-500 mt-1 flex items-center gap-1"><FaCalendarAlt className="inline text-green-500" /> {announcement.date}</p>
+      {/* Activities Section */}
+      {student?.nonAcademicActivities && student.nonAcademicActivities.length > 0 && (
+        <section className="mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Your Activities</h2>
+          <div className="space-y-3">
+            {student.nonAcademicActivities.map((activity, idx) => (
+              <div key={idx} className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-semibold text-gray-900">{activity.name}</p>
+                    <p className="text-sm text-gray-500 mt-1">Role: {activity.role} • Year: {activity.year}</p>
+                  </div>
                 </div>
-                <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
-                  {announcement.category}
-                </span>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Call to Action */}
+      <section className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl border border-indigo-100 p-8 text-center">
+        <p className="text-gray-700 mb-4">Want to see your complete profile with all your information?</p>
+        <button 
+          onClick={onViewProfile}
+          className="px-8 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all font-semibold shadow-lg hover:shadow-xl"
+        >
+          View Full Profile
+        </button>
       </section>
     </div>
   )

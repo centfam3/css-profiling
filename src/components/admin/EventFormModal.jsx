@@ -48,7 +48,15 @@ export default function EventFormModal({ isOpen, onClose, onSave, event }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(event ? { ...event, ...formData } : { ...formData, id: `EVT${Math.floor(Math.random() * 1000)}`, participants: [] });
+    
+    // Prepare event data
+    const eventData = event ? { ...event, ...formData } : { 
+      ...formData, 
+      id: `EVT${Date.now()}`, // Use timestamp for unique ID
+      participants: [] 
+    };
+    
+    onSave(eventData);
     onClose();
   };
 

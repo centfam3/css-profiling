@@ -15,33 +15,16 @@ const navItems = [
       { label: 'Announcements', icon: <FaBullhorn />, page: 'announcements' },
     ],
   },
-  {
-    section: 'Academic',
-    items: [
-      { label: 'My Subjects', icon: <MdMenuBook />, page: 'subjects' },
-      { label: 'Grades', icon: <MdBarChart />, page: 'grades' },
-      { label: 'Attendance', icon: <MdCheckCircle />, page: 'attendance' },
-      { label: 'Enrollment', icon: <MdAssignment />, page: 'enrollment' },
-    ],
-  },
-  {
-    section: 'Communication',
-    items: [
-      { label: 'Messages', icon: <MdChat />, page: 'messages' },
-      { label: 'Notifications', icon: <FaBell />, page: 'notifications' },
-    ],
-  },
-  {
-    section: 'Other',
-    items: [
-      { label: 'Settings', icon: <MdSettings />, page: 'settings' },
-    ],
-  },
 ]
 
-export default function Sidebar({ isCollapsed: externalIsCollapsed, onToggle, activePage, onNavigate, onLogout }) {
+export default function Sidebar({ isCollapsed: externalIsCollapsed, onToggle, activePage, onNavigate, onLogout, user }) {
   const [internalCollapsed, setInternalCollapsed] = useState(false)
   const isCollapsed = externalIsCollapsed !== undefined ? externalIsCollapsed : internalCollapsed
+
+  const getInitials = (name) => {
+    if (!name) return 'A'
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
+  }
 
   const handleToggle = () => {
     if (onToggle) {
@@ -133,22 +116,23 @@ export default function Sidebar({ isCollapsed: externalIsCollapsed, onToggle, ac
       </nav>
 
       {/* Footer */}
-      <div className="bg-orange-50 border-t border-orange-100 px-3 py-3">
+      <div className="bg-orange-50 border-t border-orange-100 px-3 py-3 mt-auto">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold text-xs flex-shrink-0 relative">
-            MR
+            {user?.name ? getInitials(user.name) : 'A'}
             <span className="absolute bottom-0 right-0 w-2 h-2 bg-green-400 rounded-full border-2 border-white"></span>
           </div>
           {!isCollapsed && (
-            <div className="flex-1">
-              <p className="text-xs font-semibold text-black">Mr. Reyes</p>
-              <p className="text-xs text-gray-500">Faculty</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-black truncate">{user?.name || 'Admin User'}</p>
+              <p className="text-[10px] text-gray-500 capitalize">{user?.role || 'Faculty'}</p>
             </div>
           )}
           {!isCollapsed && (
             <button 
               onClick={onLogout}
-              className="ml-auto text-gray-300 hover:text-black transition-colors cursor-pointer text-base"
+              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all duration-200 cursor-pointer"
+              title="Logout"
             >
               <MdLogout size={16} />
             </button>

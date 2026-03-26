@@ -1,29 +1,54 @@
-import React, { useState, useMemo } from 'react';
-import { FaCalendarAlt, FaSearch, FaFileExport, FaEye, FaUsers, FaArrowRight } from 'react-icons/fa';
-import { MOCK_EVENTS, MOCK_STUDENTS } from '../../constants/mockData';
+import React, { useState, useMemo, useEffect } from 'react';
+import axios from 'axios';
+import { FaCalendarAlt, FaSearch, FaFileExport, FaEye, FaUsers, FaArrowRight, FaLaptopCode, FaBookOpen } from 'react-icons/fa';
 import StudentViewModal from '../../components/admin/StudentViewModal';
 
 export default function EventHandlerView() {
-  const [selectedEventId, setSelectedEventId] = useState(MOCK_EVENTS[0]?.id || '');
+  const [events, setEvents] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [selectedEventId, setSelectedEventId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewingStudent, setViewingStudent] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch events and students from backend
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [eventsRes, studentsRes] = await Promise.all([
+          axios.get('http://localhost:5000/api/events'),
+          axios.get('http://localhost:5000/api/students')
+        ]);
+        setEvents(eventsRes.data);
+        setStudents(studentsRes.data);
+        if (eventsRes.data.length > 0) {
+          setSelectedEventId(eventsRes.data[0].id);
+        }
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const selectedEvent = useMemo(() => 
-    MOCK_EVENTS.find(e => e.id === selectedEventId), 
-    [selectedEventId]
+    events.find(e => e.id === selectedEventId), 
+    [events, selectedEventId]
   );
 
   const participants = useMemo(() => {
     const assignedIds = selectedEvent?.participants || [];
-    return MOCK_STUDENTS.filter(s => assignedIds.includes(s.id))
-      .filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    return students.filter(s => assignedIds.includes(s.id))
+      .filter(s => `${s.firstName} ${s.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) || 
                    s.id.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [selectedEvent, searchTerm]);
+  }, [selectedEvent, students, searchTerm]);
 
   const handleExport = () => {
     const csvContent = "data:text/csv;charset=utf-8," 
-      + "Student ID,Name,Email,Phone,Guardian,Guardian Contact\n"
-      + participants.map(p => `${p.id},${p.name},${p.email},${p.phone},${p.guardian},${p.guardianContact}`).join("\n");
+      + "Student ID,First Name,Last Name,Email,Phone\n"
+      + participants.map(p => `${p.id},${p.firstName},${p.lastName},${p.personalInfo?.email},${p.personalInfo?.contact}`).join("\n");
     
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -56,7 +81,8 @@ export default function EventHandlerView() {
               onChange={(e) => setSelectedEventId(e.target.value)}
               className="pl-11 pr-10 py-3 bg-indigo-50 border border-indigo-100 rounded-xl text-sm font-bold text-indigo-900 focus:ring-4 focus:ring-indigo-100 outline-none cursor-pointer appearance-none min-w-[240px]"
             >
-              {MOCK_EVENTS.map(event => (
+              <option value="">Select an event...</option>
+              {events.map(event => (
                 <option key={event.id} value={event.id}>{event.name}</option>
               ))}
             </select>
@@ -123,22 +149,30 @@ export default function EventHandlerView() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm shadow-sm group-hover:scale-110 transition-transform">
-                        {student.name.charAt(0)}
+                      <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm shadow-sm group-hover:scale-110 transition-transform flex-shrink-0">
+                        {student.firstName.charAt(0)}
                       </div>
-                      <div>
-                        <p className="text-sm font-bold text-gray-800">{student.name}</p>
-                        <p className="text-[10px] text-gray-400 font-medium tracking-wide uppercase">{student.id}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-gray-800 truncate">{student.firstName} {student.lastName}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                            <FaLaptopCode size={10} /> {student.personalInfo?.course}
+                          </span>
+                          <span className="text-gray-300">•</span>
+                          <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                            <FaBookOpen size={10} /> {student.personalInfo?.yearLevel}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <p className="text-xs font-bold text-gray-700">{student.email}</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">{student.phone}</p>
+                    <p className="text-xs font-bold text-gray-700">{student.personalInfo?.email}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{student.personalInfo?.contact}</p>
                   </td>
                   <td className="px-6 py-4">
-                    <p className="text-xs font-bold text-gray-700">{student.guardian}</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">{student.guardianContact}</p>
+                    <p className="text-xs font-bold text-gray-700">N/A</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">N/A</p>
                   </td>
                   <td className="px-6 py-4 text-center">
                     <button 

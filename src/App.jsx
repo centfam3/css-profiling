@@ -1,35 +1,134 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import axios from 'axios'
 import LoginPage from './components/LoginPage'
-import StudentRegistration from './components/StudentRegistration'
 import FacultyDashboard from './page/FacultyDashboard'
 import StudentDashboard from './page/StudentDashboard'
+import StudentProfilePage from './page/StudentProfilePage'
 
 function AppContent() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
 
-  const handleLogin = (email, password) => {
-    // Basic mock login: any email/password works for now
-    if (email && password) {
-      setIsLoggedIn(true)
-      navigate('/dashboard')
+  // Restore user session from sessionStorage on mount
+  useEffect(() => {
+    const storedUser = sessionStorage.getItem('user')
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser)
+        setUser(userData)
+        console.log('User session restored from sessionStorage:', userData)
+      } catch (error) {
+        console.error('Error parsing stored user data:', error)
+        sessionStorage.removeItem('user')
+      }
+    }
+    setLoading(false)
+  }, [])
+
+  const handleLogin = async (email, password) => {
+    try {
+      console.log('Logging in with:', { email, password });
+      const response = await axios.post('http://localhost:5000/api/login', { 
+        email, 
+        password
+      });
+      console.log('Login response:', response.data);
+      const { role: returnedRole, user: userData } = response.data;
+      
+      const userWithRole = { ...userData, role: returnedRole }
+      setUser(userWithRole)
+      // Store user session in sessionStorage for tab-specific session
+      sessionStorage.setItem('user', JSON.stringify(userWithRole))
+      
+      if (returnedRole === 'admin') {
+        console.log('Admin user detected, navigating to /dashboard');
+        navigate('/dashboard');
+      } else if (returnedRole === 'student') {
+        console.log('Student user detected, navigating to /student-dashboard');
+        navigate('/student-dashboard');
+      }
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || 'Invalid email or password';
+      alert(errorMsg);
+      console.error('Login error:', err);
     }
   }
 
   const handleLogout = () => {
-    setIsLoggedIn(false)
-    navigate('/login')
+    setUser(null)
+    sessionStorage.removeItem('user')
+    navigate('/')
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-indigo-600 to-orange-500">
+        <div className="text-white text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-lg font-semibold">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
     <Routes>
-      <Route path="/login" element={isLoggedIn ? <Navigate to="/dashboard" /> : <LoginPage onLogin={handleLogin} />} />
-      <Route path="/register" element={<StudentRegistration />} />
-      <Route path="/dashboard" element={isLoggedIn ? <FacultyDashboard onLogout={handleLogout} /> : <Navigate to="/login" />} />
-      <Route path="/student-dashboard" element={<StudentDashboard />} />
-      <Route path="/" element={<Navigate to="/login" />} />
-      <Route path="*" element={<Navigate to="/login" />} />
+      {/* Home redirect logic based on role */}
+      <Route 
+        path="/" 
+        element={
+          !user ? (
+            <LoginPage onLogin={handleLogin} />
+          ) : user.role === 'admin' ? (
+            <Navigate to="/dashboard" replace />
+          ) : (
+            <Navigate to="/student-dashboard" replace />
+          )
+        } 
+      />
+
+      {/* Auth routes */}
+      <Route path="/login" element={<Navigate to="/" replace />} />
+
+      {/* Admin routes */}
+      <Route 
+        path="/dashboard/*" 
+        element={
+          user?.role === 'admin' ? (
+            <FacultyDashboard user={user} onLogout={handleLogout} />
+          ) : (
+            <Navigate to="/" replace />
+          )
+        } 
+      />
+
+      {/* Student routes */}
+      <Route 
+        path="/student-dashboard/*" 
+        element={
+          user?.role === 'student' ? (
+            <StudentDashboard user={user} onLogout={handleLogout} />
+          ) : (
+            <Navigate to="/" replace />
+          )
+        } 
+      />
+      
+      <Route 
+        path="/student-profile" 
+        element={
+          user?.role === 'student' ? (
+            <StudentProfilePage student={user} onBack={() => navigate('/student-dashboard')} />
+          ) : (
+            <Navigate to="/" replace />
+          )
+        } 
+      />
+
+      {/* Catch-all */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }

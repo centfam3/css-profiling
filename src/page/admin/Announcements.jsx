@@ -1,11 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { FaPlus, FaSearch, FaBullhorn, FaEdit, FaTrash, FaEye, FaClock, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
-import { MOCK_ANNOUNCEMENTS } from '../../constants/mockData';
 import AnnouncementFormModal from '../../components/admin/AnnouncementFormModal';
 import DeleteConfirmModal from '../../components/admin/DeleteConfirmModal';
 
 export default function Announcements() {
-  const [announcements, setAnnouncements] = useState(MOCK_ANNOUNCEMENTS);
+  const [announcements, setAnnouncements] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
   

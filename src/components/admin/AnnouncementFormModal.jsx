@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { FaTimes, FaSave, FaToggleOn, FaToggleOff } from 'react-icons/fa';
-import { MOCK_EVENTS } from '../../constants/mockData';
 
 export default function AnnouncementFormModal({ isOpen, onClose, onSave, announcement }) {
   const [formData, setFormData] = useState({
@@ -11,6 +11,22 @@ export default function AnnouncementFormModal({ isOpen, onClose, onSave, announc
     publishDate: new Date().toISOString().split('T')[0],
     status: 'Published',
   });
+  const [events, setEvents] = useState([]);
+
+  // Fetch events for target audience dropdown
+  useEffect(() => {
+    if (isOpen) {
+      const fetchEvents = async () => {
+        try {
+          const response = await axios.get('http://localhost:5000/api/events');
+          setEvents(response.data);
+        } catch (error) {
+          console.error('Error fetching events:', error);
+        }
+      };
+      fetchEvents();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (announcement) {
@@ -85,7 +101,7 @@ export default function AnnouncementFormModal({ isOpen, onClose, onSave, announc
             <label className={labelClasses}>Target Audience</label>
             <select name="targetAudience" value={formData.targetAudience} onChange={handleChange} className={inputClasses}>
               <option value="All Students">All Students</option>
-              {MOCK_EVENTS.map(event => (
+              {events.map(event => (
                 <option key={event.id} value={event.name}>{event.name}</option>
               ))}
             </select>

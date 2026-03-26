@@ -1,11 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import axios from 'axios';
 import { FaPlus, FaSearch, FaCalendarAlt, FaMapMarkerAlt, FaUsers, FaEdit, FaTrash, FaThList, FaThLarge } from 'react-icons/fa';
-import { MOCK_EVENTS } from '../../constants/mockData';
 import EventFormModal from '../../components/admin/EventFormModal';
 import DeleteConfirmModal from '../../components/admin/DeleteConfirmModal';
 
 export default function EventManagement() {
-  const [events, setEvents] = useState(MOCK_EVENTS);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'table'
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
@@ -14,6 +15,21 @@ export default function EventManagement() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [deletingEvent, setDeletingEvent] = useState(null);
+
+  // Fetch events from backend
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/events');
+        setEvents(response.data);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching events:', error);
+        setLoading(false);
+      }
+    };
+    fetchEvents();
+  }, []);
 
   const filteredEvents = useMemo(() => {
     return events.filter(event => {
@@ -24,19 +40,34 @@ export default function EventManagement() {
     });
   }, [events, searchTerm, filterCategory]);
 
-  const handleSaveEvent = (savedEvent) => {
-    if (editingEvent) {
-      setEvents(prev => prev.map(e => e.id === savedEvent.id ? savedEvent : e));
-    } else {
-      setEvents(prev => [...prev, savedEvent]);
+  const handleSaveEvent = async (savedEvent) => {
+    try {
+      if (editingEvent) {
+        // Update event
+        const response = await axios.put(`http://localhost:5000/api/events/${savedEvent.id}`, savedEvent);
+        setEvents(prev => prev.map(e => e.id === savedEvent.id ? response.data : e));
+      } else {
+        // Create new event
+        const response = await axios.post('http://localhost:5000/api/events', savedEvent);
+        setEvents(prev => [...prev, response.data]);
+      }
+      setIsFormOpen(false);
+      setEditingEvent(null);
+    } catch (error) {
+      console.error('Error saving event:', error);
+      alert('Error saving event: ' + (error.response?.data?.message || error.message));
     }
-    setIsFormOpen(false);
-    setEditingEvent(null);
   };
 
-  const handleDelete = (id) => {
-    setEvents(prev => prev.filter(e => e.id !== id));
-    setDeletingEvent(null);
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`http://localhost:5000/api/events/${id}`);
+      setEvents(prev => prev.filter(e => e.id !== id));
+      setDeletingEvent(null);
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      alert('Error deleting event: ' + (error.response?.data?.message || error.message));
+    }
   };
 
   const getCategoryColor = (category) => {
