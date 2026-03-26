@@ -8,7 +8,12 @@ const mockStudentProfile = {
   phoneNumber: '+63 917 1234567',
   guardianName: 'Maria Doe',
   guardianContact: '+63 917 9876543',
+  skills: ['React', 'Tailwind', 'Node.js', 'Python'],
   hobbies: ['Reading', 'Basketball', 'Photography', 'Coding'],
+  achievements: {
+    academic: ['Dean\'s List 2024', 'Math Olympiad Gold'],
+    sports: ['Basketball MVP 2023']
+  },
   medicalInfo: 'Blood Type: O+, No known allergies, Asthmatic (requires inhaler)',
   course: 'BS Information Technology',
   year: 'Third Year',
@@ -18,14 +23,22 @@ const mockStudentProfile = {
 export default function ProfileModal({ isOpen, onClose }) {
   const [isEditing, setIsEditing] = useState(false)
   const [profile, setProfile] = useState(mockStudentProfile)
+  const [skillsInput, setSkillsInput] = useState(profile.skills.join(', '))
   const [hobbiesInput, setHobbiesInput] = useState(profile.hobbies.join(', '))
+  const [academicInput, setAcademicInput] = useState(profile.achievements.academic.join(', '))
+  const [sportsInput, setSportsInput] = useState(profile.achievements.sports.join(', '))
 
   if (!isOpen) return null
 
   const handleSave = () => {
     setProfile({
       ...profile,
-      hobbies: hobbiesInput.split(',').map((h) => h.trim().filter(Boolean)),
+      skills: skillsInput.split(',').map((s) => s.trim()).filter(Boolean),
+      hobbies: hobbiesInput.split(',').map((h) => h.trim()).filter(Boolean),
+      achievements: {
+        academic: academicInput.split(',').map((a) => a.trim()).filter(Boolean),
+        sports: sportsInput.split(',').map((s) => s.trim()).filter(Boolean),
+      }
     })
     setIsEditing(false)
   }
@@ -184,40 +197,106 @@ export default function ProfileModal({ isOpen, onClose }) {
             </div>
           </div>
 
-          {/* Hobbies */}
+          {/* Skills & Hobbies */}
+          <div className="border-t pt-4 grid grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-bold text-gray-800 mb-3 uppercase tracking-wide">Skills</label>
+              {isEditing ? (
+                <textarea
+                  value={skillsInput}
+                  onChange={(e) => setSkillsInput(e.target.value)}
+                  placeholder="React, Tailwind, Node.js..."
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 h-20 text-sm"
+                />
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {profile.skills.map((skill) => (
+                    <span key={skill} className="px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-full text-xs font-bold border border-indigo-100">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-800 mb-3 uppercase tracking-wide">Hobbies</label>
+              {isEditing ? (
+                <textarea
+                  value={hobbiesInput}
+                  onChange={(e) => setHobbiesInput(e.target.value)}
+                  placeholder="Reading, Photography..."
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 h-20 text-sm"
+                />
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {profile.hobbies.map((hobby) => (
+                    <span key={hobby} className="px-2.5 py-1 bg-orange-50 text-orange-600 rounded-full text-xs font-bold border border-orange-100">
+                      {hobby}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Achievements */}
           <div className="border-t pt-4">
-            <label className="block text-sm font-bold text-gray-800 mb-3">Hobbies</label>
-            {isEditing ? (
-              <textarea
-                value={hobbiesInput}
-                onChange={(e) => setHobbiesInput(e.target.value)}
-                placeholder="Separate hobbies with commas"
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 h-20"
-              />
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {profile.hobbies.map((hobby) => (
-                  <span key={hobby} className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-medium">
-                    {hobby}
-                  </span>
-                ))}
+            <label className="block text-sm font-bold text-gray-800 mb-3 uppercase tracking-wide">Achievements</label>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <p className="text-[10px] font-bold text-gray-400 uppercase mb-3 tracking-widest">Academic</p>
+                {isEditing ? (
+                  <textarea
+                    value={academicInput}
+                    onChange={(e) => setAcademicInput(e.target.value)}
+                    placeholder="List academic achievements..."
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 h-16 text-xs"
+                  />
+                ) : (
+                  <ul className="space-y-1.5">
+                    {profile.achievements.academic.map((ach, i) => (
+                      <li key={i} className="text-xs text-gray-700 font-medium flex items-center gap-2">
+                        <span className="w-1 h-1 rounded-full bg-orange-400"></span> {ach}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-            )}
+              <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <p className="text-[10px] font-bold text-gray-400 uppercase mb-3 tracking-widest">Sports</p>
+                {isEditing ? (
+                  <textarea
+                    value={sportsInput}
+                    onChange={(e) => setSportsInput(e.target.value)}
+                    placeholder="List sports achievements..."
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 h-16 text-xs"
+                  />
+                ) : (
+                  <ul className="space-y-1.5">
+                    {profile.achievements.sports.map((ach, i) => (
+                      <li key={i} className="text-xs text-gray-700 font-medium flex items-center gap-2">
+                        <span className="w-1 h-1 rounded-full bg-indigo-400"></span> {ach}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Medical Info */}
           <div className="border-t pt-4">
-            <label className="block text-sm font-bold text-gray-800 mb-3">Medical Information</label>
+            <label className="block text-sm font-bold text-gray-800 mb-3 uppercase tracking-wide">Medical Information</label>
             {isEditing ? (
               <textarea
                 value={profile.medicalInfo}
                 onChange={(e) => setProfile({ ...profile, medicalInfo: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 h-24"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 h-24 text-sm"
               />
             ) : (
-              <p className="text-gray-700 bg-gray-50 px-4 py-3 rounded-lg whitespace-pre-line">
-                {profile.medicalInfo}
-              </p>
+              <div className="p-4 bg-red-50/50 border border-red-100 rounded-xl">
+                <p className="text-xs text-red-700 leading-relaxed font-semibold">{profile.medicalInfo}</p>
+              </div>
             )}
           </div>
 

@@ -3,6 +3,7 @@ import { FaSearch, FaFilter, FaTimes, FaEdit, FaTrash, FaEye, FaTrophy, FaPlus }
 import { MOCK_STUDENTS } from '../../constants/mockData';
 import StudentViewModal from '../../components/admin/StudentViewModal';
 import StudentEditModal from '../../components/admin/StudentEditModal';
+import StudentCreateModal from '../../components/admin/StudentCreateModal';
 import DeleteConfirmModal from '../../components/admin/DeleteConfirmModal';
 
 export default function StudentManagement() {
@@ -15,13 +16,14 @@ export default function StudentManagement() {
   const [viewingStudent, setViewingStudent] = useState(null);
   const [editingStudent, setEditingStudent] = useState(null);
   const [deletingStudent, setDeletingStudent] = useState(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Filter logic
   const filteredStudents = useMemo(() => {
     return students.filter(student => {
-      const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      const matchesSearch = (student.name?.toLowerCase().includes(searchTerm.toLowerCase()) || '') || 
                             student.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            student.email.toLowerCase().includes(searchTerm.toLowerCase());
+                            (student.email?.toLowerCase().includes(searchTerm.toLowerCase()) || '');
       
       const matchesSkill = filterSkill === '' || student.skills.some(s => s.toLowerCase().includes(filterSkill.toLowerCase()));
       
@@ -41,6 +43,11 @@ export default function StudentManagement() {
   const handleSaveEdit = (updatedStudent) => {
     setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s));
     setEditingStudent(null);
+  };
+
+  const handleCreateStudent = (newStudent) => {
+    setStudents(prev => [newStudent, ...prev]);
+    setIsCreateModalOpen(false);
   };
 
   const clearFilters = () => {
@@ -97,7 +104,10 @@ export default function StudentManagement() {
           <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
             Showing <span className="text-indigo-600">{filteredStudents.length}</span> of {students.length} students
           </p>
-          <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all text-xs font-bold shadow-lg shadow-indigo-100">
+          <button 
+            onClick={() => setIsCreateModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all text-xs font-bold shadow-lg shadow-indigo-100"
+          >
             <FaPlus /> Add New Student
           </button>
         </div>
@@ -120,39 +130,55 @@ export default function StudentManagement() {
                 <tr key={student.id} className="hover:bg-indigo-50/20 transition-colors group">
                   <td className="px-6 py-5">
                     <div className="flex items-center gap-4">
-                      <div className="w-11 h-11 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm shadow-sm">
-                        {student.name.charAt(0)}
+                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-sm shadow-sm transition-transform group-hover:scale-110 ${student.isProfileComplete === false ? 'bg-orange-100 text-orange-600' : 'bg-indigo-100 text-indigo-600'}`}>
+                        {student.name ? student.name.charAt(0) : student.id.charAt(0)}
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-gray-800">{student.name}</p>
-                        <p className="text-xs text-gray-500">{student.id} • {student.email}</p>
+                        <p className="text-sm font-bold text-gray-800">{student.name || 'Pending Profile'}</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{student.id}</p>
+                        {student.email && <p className="text-[10px] text-gray-400 mt-0.5">{student.email}</p>}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-5">
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter mb-1.5">Skills</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {student.skills.map(skill => (
+                            <span key={skill} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full text-[9px] font-bold border border-indigo-100/50">
+                              {skill}
+                            </span>
+                          ))}
+                          {student.skills.length === 0 && <span className="text-[9px] text-gray-300 italic">None listed</span>}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter mb-1.5">Hobbies</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {student.hobbies.map(hobby => (
+                            <span key={hobby} className="px-2 py-0.5 bg-gray-50 text-gray-500 rounded-full text-[9px] font-bold border border-gray-100">
+                              {hobby}
+                            </span>
+                          ))}
+                          {student.hobbies.length === 0 && <span className="text-[9px] text-gray-300 italic">None listed</span>}
+                        </div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-5">
                     <div className="space-y-2">
-                      <div className="flex flex-wrap gap-1.5">
-                        {student.skills.map(skill => (
-                          <span key={skill} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-bold border border-indigo-100/50">
-                            {skill}
-                          </span>
-                        ))}
+                      <div className="flex items-center gap-2 text-yellow-600 bg-yellow-50 px-3 py-1.5 rounded-xl border border-yellow-100 w-fit">
+                        <FaTrophy size={12} />
+                        <span className="text-xs font-bold">
+                          {student.achievements.academic.length + student.achievements.sports.length}
+                        </span>
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {student.hobbies.map(hobby => (
-                          <span key={hobby} className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-[10px] font-bold">
-                            {hobby}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-5">
-                    <div className="flex items-center gap-2 text-yellow-600 bg-yellow-50 px-3 py-1.5 rounded-xl border border-yellow-100 w-fit">
-                      <FaTrophy size={14} />
-                      <span className="text-xs font-bold">
-                        {student.achievements.academic.length + student.achievements.sports.length}
-                      </span>
+                      {student.isProfileComplete === false && (
+                        <div className="px-3 py-1 bg-orange-50 text-orange-600 rounded-full text-[9px] font-bold border border-orange-100 uppercase tracking-wider animate-pulse">
+                          Needs Onboarding
+                        </div>
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-5">
@@ -207,6 +233,11 @@ export default function StudentManagement() {
         onClose={() => setEditingStudent(null)} 
         onSave={handleSaveEdit}
         student={editingStudent} 
+      />
+      <StudentCreateModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSave={handleCreateStudent}
       />
       <DeleteConfirmModal 
         isOpen={!!deletingStudent} 
