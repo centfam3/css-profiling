@@ -217,10 +217,14 @@ export default function StudentManagement() {
           </div>
         ) : students.length > 0 ? (
           students.map((student) => (
-            <div key={student.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-xl hover:border-indigo-100 transition-all group flex flex-col h-full">
+            <div key={student.id} className="bg-white rounded-2xl shadow-sm border border-indigo-100 p-6 hover:shadow-xl hover:border-indigo-200 transition-all group flex flex-col h-full">
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl font-bold group-hover:scale-110 transition-transform">
-                  {student.firstName[0]}{student.lastName[0]}
+                  {student.photo ? (
+                    <img src={`http://localhost:5000/uploads/${student.photo}`} alt="Profile" className="w-full h-full rounded-2xl object-cover" />
+                  ) : (
+                    <span>{student.firstName[0]}{student.lastName[0]}</span>
+                  )}
                 </div>
                 <div className="flex-1">
                   <h3 className="font-bold text-gray-800 leading-tight">{student.firstName} {student.lastName}</h3>
@@ -266,7 +270,7 @@ export default function StudentManagement() {
               <div className="grid grid-cols-3 gap-2 mt-8 pt-6 border-t border-gray-50">
                 <button 
                   onClick={() => setViewingStudent(student)}
-                  className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all flex flex-col items-center gap-1"
+                  className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all flex flex-col items-center gap-1"
                 >
                   <FaEye size={14} />
                   <span className="text-[8px] font-bold uppercase">View</span>

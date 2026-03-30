@@ -7,6 +7,8 @@ export default function EventFormModal({ isOpen, onClose, onSave, event }) {
     category: 'Academic',
     date: '',
     time: '',
+    endDate: '',
+    endTime: '',
     venue: '',
     description: '',
     maxParticipants: 50,
@@ -20,6 +22,8 @@ export default function EventFormModal({ isOpen, onClose, onSave, event }) {
         category: event.category || 'Academic',
         date: event.date || '',
         time: event.time || '',
+        endDate: event.endDate || event.date || '',
+        endTime: event.endTime || event.time || '',
         venue: event.venue || '',
         description: event.description || '',
         maxParticipants: event.maxParticipants || 50,
@@ -31,6 +35,8 @@ export default function EventFormModal({ isOpen, onClose, onSave, event }) {
         category: 'Academic',
         date: '',
         time: '',
+        endDate: '',
+        endTime: '',
         venue: '',
         description: '',
         maxParticipants: 50,
@@ -65,7 +71,7 @@ export default function EventFormModal({ isOpen, onClose, onSave, event }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto animate-scaleIn">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-scaleIn">
         <div className="sticky top-0 bg-white px-8 py-5 border-b border-gray-100 flex items-center justify-between z-10">
           <h2 className="text-xl font-bold text-gray-800">{event ? 'Edit Event' : 'Create New Event'}</h2>
           <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all">
@@ -93,13 +99,25 @@ export default function EventFormModal({ isOpen, onClose, onSave, event }) {
               <label className={labelClasses}>Max Participants</label>
               <input name="maxParticipants" type="number" value={formData.maxParticipants} onChange={handleChange} className={inputClasses} required />
             </div>
-            <div>
-              <label className={labelClasses}>Event Date</label>
-              <input name="date" type="date" value={formData.date} onChange={handleChange} className={inputClasses} required />
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl col-span-2 grid grid-cols-2 gap-4">
+              <div>
+                <label className={`${labelClasses} text-blue-800`}>Start Date</label>
+                <input name="date" type="date" value={formData.date} onChange={handleChange} className={inputClasses} required />
+              </div>
+              <div>
+                <label className={`${labelClasses} text-blue-800`}>Start Time</label>
+                <input name="time" type="time" value={formData.time} onChange={handleChange} className={inputClasses} required />
+              </div>
             </div>
-            <div>
-              <label className={labelClasses}>Event Time</label>
-              <input name="time" type="time" value={formData.time} onChange={handleChange} className={inputClasses} required />
+            <div className="p-4 bg-green-50 border border-green-200 rounded-xl col-span-2 grid grid-cols-2 gap-4">
+              <div>
+                <label className={`${labelClasses} text-green-800`}>End Date</label>
+                <input name="endDate" type="date" value={formData.endDate} onChange={handleChange} className={inputClasses} required />
+              </div>
+              <div>
+                <label className={`${labelClasses} text-green-800`}>End Time</label>
+                <input name="endTime" type="time" value={formData.endTime} onChange={handleChange} className={inputClasses} required />
+              </div>
             </div>
           </div>
 

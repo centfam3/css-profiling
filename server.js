@@ -3,6 +3,7 @@ import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import multer from 'multer';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,6 +12,25 @@ const app = express();
 const PORT = 5000;
 const STUDENTS_FILE = path.join(__dirname, 'students.json');
 const EVENTS_FILE = path.join(__dirname, 'events.json');
+const UPLOADS_DIR = path.join(__dirname, 'uploads');
+
+// Ensure uploads directory exists
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR);
+}
+
+// Multer setup for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, UPLOADS_DIR);
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  }
+});
+const upload = multer({ storage });
+
+app.use('/uploads', express.static(UPLOADS_DIR));
 
 app.use(cors());
 app.use(express.json());
@@ -162,6 +182,38 @@ app.post('/api/students', (req, res) => {
   res.status(201).json(newStudent);
 });
 
+app.post('/api/students/:id/upload-photo', upload.single('photo'), (req, res) => {
+  const studentId = req.params.id;
+  const photo = req.file.filename;
+
+  const students = readStudents();
+  const index = students.findIndex(s => s.id === studentId);
+
+  if (index !== -1) {
+    students[index].photo = photo;
+    writeStudents(students);
+    res.json({ photo });
+  } else {
+    res.status(404).json({ message: 'Student not found' });
+  }
+});
+
+app.post('/api/students/:id/upload-medical', upload.single('medicalCert'), (req, res) => {
+  const studentId = req.params.id;
+  const medicalCert = req.file.filename;
+
+  const students = readStudents();
+  const index = students.findIndex(s => s.id === studentId);
+
+  if (index !== -1) {
+    students[index].medicalCert = medicalCert;
+    writeStudents(students);
+    res.json({ medicalCert });
+  } else {
+    res.status(404).json({ message: 'Student not found' });
+  }
+});
+
 // PUT /api/students/:id - Update full
 app.put('/api/students/:id', (req, res) => {
   const oldId = req.params.id;
@@ -305,6 +357,8 @@ app.post('/api/events', (req, res) => {
     name: req.body.name,
     date: req.body.date,
     time: req.body.time,
+    endDate: req.body.endDate || req.body.date, // Default to start date if not provided
+    endTime: req.body.endTime || req.body.time,   // Default to start time if not provided
     venue: req.body.venue,
     category: req.body.category || 'General',
     description: req.body.description || '',

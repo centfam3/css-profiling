@@ -1,8 +1,8 @@
 [
   {
     "id": "s009",
-    "firstName": "CENT",
-    "lastName": "BORA",
+    "firstName": "W RIZ",
+    "lastName": "RADAAA",
     "password": "password123",
     "photo": "",
     "personalInfo": {
@@ -10,7 +10,7 @@
       "gender": "Male",
       "address": "Tacloban",
       "contact": "0917-444-5555",
-      "email": "daniel.p@email.com",
+      "email": "daniel.po@email.com",
       "course": "IT",
       "yearLevel": "3rd Year"
     },
@@ -33,7 +33,7 @@
       {
         "description": "Fighting",
         "date": "2024-04-12",
-        "severity": "Severe"
+        "severity": "Major"
       }
     ],
     "skills": [
@@ -44,60 +44,18 @@
     "affiliations": []
   },
   {
-    "id": "s1774488629718",
-    "firstName": "ada",
-    "lastName": "adad",
-    "password": "cent123",
-    "photo": "",
-    "personalInfo": {
-      "birthdate": "2004-02-01",
-      "gender": "Male",
-      "address": "adada",
-      "contact": "09121212",
-      "email": "cent@gmail.com",
-      "course": "IT",
-      "yearLevel": "4th Year"
-    },
-    "academicHistory": [
-      {
-        "year": "",
-        "gradeLevel": "Grade 7",
-        "gpa": "",
-        "awards": []
-      }
-    ],
-    "nonAcademicActivities": [
-      {
-        "name": "",
-        "role": "",
-        "year": ""
-      }
-    ],
-    "violations": [
-      {
-        "description": "",
-        "date": "",
-        "severity": "Minor"
-      }
-    ],
-    "skills": [
-      "Proggraming",
-      "Typing"
-    ],
-    "affiliations": []
-  },
-  {
     "id": "s1774489559267",
     "firstName": "Paolo",
     "lastName": "Roms",
     "password": "pao123",
     "photo": "",
+    "medicalCert": "1774510593282-15eaecfa81433a95276592b8f64dfa41.jpg",
     "personalInfo": {
-      "birthdate": "2006-04-01",
-      "gender": "Male",
-      "address": "adada",
-      "contact": "0921228382",
       "email": "pao@gmail.com",
+      "gender": "Male",
+      "birthdate": "2006-04-01",
+      "contact": "0921228382",
+      "address": "adada",
       "course": "CS",
       "yearLevel": "2nd Year"
     },
@@ -133,7 +91,10 @@
         "severity": "Minor"
       }
     ],
-    "skills": [],
+    "skills": [
+      "Programming",
+      "Networking"
+    ],
     "affiliations": []
   },
   {

@@ -83,40 +83,22 @@ export default function StudentNavbar({ onLogout, notifications = [], unreadCoun
           {/* User Avatar */}
           <div className="relative" ref={profileRef}>
             <button
-              onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="w-9 h-9 rounded-xl bg-orange-500 flex items-center justify-center hover:bg-orange-600 transition-all duration-200 text-white"
+              onClick={() => {
+                onProfileOpen();
+                setIsProfileOpen(false);
+              }}
+              className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center hover:bg-orange-600 transition-all duration-300 text-white overflow-hidden shadow-lg shadow-orange-200 hover:shadow-orange-300 hover:scale-105 active:scale-95 group"
             >
-              <FaUserCircle className="text-lg" />
+              {user?.photo ? (
+                <img 
+                  src={`http://localhost:5000/uploads/${user.photo}`} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover transition-transform group-hover:scale-110" 
+                />
+              ) : (
+                <FaUserCircle className="text-xl transition-transform group-hover:scale-110" />
+              )}
             </button>
-
-            {/* Profile Dropdown */}
-            {isProfileOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 z-50">
-                <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-3 text-white">
-                  <p className="font-semibold text-sm">{user?.firstName} {user?.lastName}</p>
-                  <p className="text-xs opacity-90">{user?.id}</p>
-                </div>
-                <div className="p-4 space-y-3">
-                  <button
-                    onClick={() => {
-                      onProfileOpen()
-                      setIsProfileOpen(false)
-                    }}
-                    className="w-full flex items-center gap-3 text-gray-600 hover:text-orange-600 transition text-sm font-medium"
-                  >
-                    <FaUserCircle /> My Profile
-                  </button>
-                  <div className="border-t border-gray-100 pt-3">
-                    <button 
-                      onClick={onLogout}
-                      className="w-full flex items-center gap-3 text-red-500 hover:text-red-600 transition text-sm font-medium"
-                    >
-                      <MdLogout /> Sign Out
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>

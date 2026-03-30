@@ -14,6 +14,7 @@ import EventAssignment from './admin/EventAssignment'
 import EventHandlerView from './admin/EventHandlerView'
 import Announcements from './admin/Announcements'
 import NotificationsPage from './admin/NotificationsPage'
+import UpcomingEvents from '../components/UpcomingEvents';
 
 export default function FacultyDashboard({ user, onLogout }) {
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -67,16 +68,16 @@ export default function FacultyDashboard({ user, onLogout }) {
   }, [activePage])
 
   const stats = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
 
-    const upcomingEventsCount = events.filter(event => {
-      const eventDate = new Date(event.date);
-      return eventDate >= today;
-    }).length;
+    const upcomingOrOngoingEvents = events.filter(event => {
+      const now = new Date();
+      const endDate = event.endDate && event.endTime ? new Date(`${event.endDate}T${event.endTime}`) : new Date(`${event.date}T${event.time}`);
+      return endDate >= now;
+    });
 
     const activeParticipantIds = new Set();
-    events.forEach(event => {
+    upcomingOrOngoingEvents.forEach(event => {
       if (event.participants) {
         event.participants.forEach(id => activeParticipantIds.add(id));
       }
@@ -84,9 +85,7 @@ export default function FacultyDashboard({ user, onLogout }) {
 
     return [
       { label: 'Total Students', value: students.length, icon: FaUserGraduate, color: 'blue' },
-      { label: 'Total Events', value: events.length, icon: FaCalendarCheck, color: 'indigo' },
       { label: 'Active Participants', value: activeParticipantIds.size, icon: FaRunning, color: 'green' },
-      { label: 'Upcoming Events', value: upcomingEventsCount, icon: FaClock, color: 'yellow' },
     ];
   }, [students, events]);
 
@@ -104,7 +103,12 @@ export default function FacultyDashboard({ user, onLogout }) {
         <div className="bg-white rounded-xl shadow-md overflow-hidden">
           <div className="p-5 border-b border-gray-100 flex justify-between items-center">
             <h3 className="font-bold text-gray-800">Recent Students</h3>
-            <button className="text-indigo-600 text-sm font-semibold hover:underline">View All</button>
+            <button 
+              onClick={() => setActivePage('students')}
+              className="text-indigo-600 text-sm font-semibold hover:underline cursor-pointer"
+            >
+              View All
+            </button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
@@ -158,47 +162,7 @@ export default function FacultyDashboard({ user, onLogout }) {
         </div>
 
         {/* Upcoming Events List */}
-        <div className="bg-white rounded-xl shadow-md overflow-hidden">
-          <div className="p-5 border-b border-gray-100 flex justify-between items-center">
-            <h3 className="font-bold text-gray-800">Upcoming Events</h3>
-            <button 
-              onClick={() => setActivePage('events')}
-              className="text-indigo-600 text-sm font-semibold hover:underline cursor-pointer"
-            >
-              View All
-            </button>
-          </div>
-          <div className="p-5 space-y-4">
-            {events.filter(e => new Date(e.date) >= new Date().setHours(0,0,0,0)).length > 0 ? (
-              events
-                .filter(e => new Date(e.date) >= new Date().setHours(0,0,0,0))
-                .sort((a, b) => new Date(a.date) - new Date(b.date))
-                .slice(0, 5)
-                .map((event) => (
-                  <div key={event.id} className="flex items-center gap-4 p-3 rounded-lg border border-gray-50 hover:border-indigo-100 hover:bg-indigo-50/30 transition-all">
-                    <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex flex-col items-center justify-center font-bold">
-                      <span className="text-[10px] uppercase leading-none">{new Date(event.date).toLocaleDateString('en-US', { month: 'short' })}</span>
-                      <span className="text-sm leading-none">{new Date(event.date).getDate()}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-gray-800 text-sm truncate">{event.name}</p>
-                      <p className="text-xs text-gray-500 truncate">{event.venue} • {event.time}</p>
-                    </div>
-                    <span className="px-2 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-bold whitespace-nowrap">
-                      {event.participants?.length || 0} Joined
-                    </span>
-                  </div>
-                ))
-            ) : (
-              <div className="text-center py-10">
-                <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <FaClock className="text-gray-300 text-xl" />
-                </div>
-                <p className="text-gray-400 text-sm font-medium">No upcoming events scheduled</p>
-              </div>
-            )}
-          </div>
-        </div>
+        <UpcomingEvents onViewAll={() => setActivePage('events')} />
       </div>
     </div>
   );

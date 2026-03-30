@@ -7,6 +7,7 @@ import ProfileModal from '../components/ProfileModal'
 import MyAchievements from '../components/MyAchievements'
 import EventParticipation from '../components/EventParticipation'
 import StudentAnnouncements from '../components/StudentAnnouncements'
+import UpcomingEvents from '../components/UpcomingEvents';
 import { FaGraduationCap, FaTrophy, FaCalendarAlt, FaBullhorn, FaClock, FaMapPin, FaUser } from 'react-icons/fa'
 
 const mockNotifications = [
@@ -24,7 +25,7 @@ export default function StudentDashboard({ user, onLogout }) {
   const renderPage = () => {
     switch (activePage) {
       case 'home':
-        return <DashboardHome student={user} onViewProfile={() => navigate('/student-profile')} />
+        return <DashboardHome student={user} onViewProfile={() => setIsProfileModalOpen(true)} />
       case 'achievements':
       case 'achievements-academic':
       case 'achievements-sports':
@@ -36,7 +37,7 @@ export default function StudentDashboard({ user, onLogout }) {
       case 'announcements':
         return <StudentAnnouncements />
       default:
-        return <DashboardHome student={user} onViewProfile={() => navigate('/student-profile')} />
+        return <DashboardHome student={user} onViewProfile={() => setIsProfileModalOpen(true)} />
     }
   }
 
@@ -118,53 +119,52 @@ function DashboardHome({ student, onViewProfile }) {
   return (
     <div>
       <section className="mb-8 flex justify-between items-start">
-        <div>
+        <div className="cursor-pointer" onClick={onViewProfile}>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Welcome Back, {firstName}! 👋</h1>
           <p className="text-gray-600">Student ID: <span className="font-semibold">{student?.id}</span> • Course: <span className="font-semibold text-indigo-600">{student?.personalInfo?.course === 'IT' ? 'IT' : 'CS'}</span> • Year Level: <span className="font-semibold text-purple-600">{student?.personalInfo?.yearLevel || 'N/A'}</span></p>
         </div>
-        <button 
-          onClick={onViewProfile}
-          className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all font-semibold flex items-center gap-2 shadow-lg hover:shadow-xl"
-        >
-          <FaUser size={16} /> View Full Profile
-        </button>
       </section>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {studentStats.map((stat, idx) => (
-          <div key={idx} className={`${stat.color} rounded-xl p-6 border border-gray-200 hover:shadow-md transition`}>
-            <div className="flex justify-between items-start mb-3">
-              <div className="font-semibold text-gray-700 text-sm">{stat.title}</div>
-              {stat.icon}
+          {studentStats.map((stat, idx) => (
+            <div key={idx} className={`${stat.color} rounded-xl p-6 border border-gray-200 hover:shadow-md transition`}>
+              <div className="flex justify-between items-start mb-3">
+                <div className="font-semibold text-gray-700 text-sm">{stat.title}</div>
+                {stat.icon}
+              </div>
+              <p className="text-4xl font-bold text-gray-900">{stat.count}</p>
             </div>
-            <p className="text-4xl font-bold text-gray-900">{stat.count}</p>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      {/* Quick Overview Sections */}
-      <section className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Your Information</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Personal Info */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Details</h3>
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs text-gray-400 uppercase font-semibold">Email</p>
-                <p className="text-sm font-medium text-gray-700 mt-1">{student?.personalInfo?.email || 'N/A'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-400 uppercase font-semibold">Gender</p>
-                <p className="text-sm font-medium text-gray-700 mt-1">{student?.personalInfo?.gender || 'N/A'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-400 uppercase font-semibold">Contact</p>
-                <p className="text-sm font-medium text-gray-700 mt-1">{student?.personalInfo?.contact || 'N/A'}</p>
+        {/* Upcoming Events Section */}
+        <section className="mb-8">
+          <UpcomingEvents />
+        </section>
+
+        {/* Quick Overview Sections */}
+        <section className="mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Your Information</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Personal Info */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Details</h3>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs text-gray-400 uppercase font-semibold">Email</p>
+                  <p className="text-sm font-medium text-gray-700 mt-1">{student?.personalInfo?.email || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase font-semibold">Gender</p>
+                  <p className="text-sm font-medium text-gray-700 mt-1">{student?.personalInfo?.gender || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase font-semibold">Contact</p>
+                  <p className="text-sm font-medium text-gray-700 mt-1">{student?.personalInfo?.contact || 'N/A'}</p>
+                </div>
               </div>
             </div>
-          </div>
 
           {/* Skills List */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -207,13 +207,7 @@ function DashboardHome({ student, onViewProfile }) {
 
       {/* Call to Action */}
       <section className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl border border-indigo-100 p-8 text-center">
-        <p className="text-gray-700 mb-4">Want to see your complete profile with all your information?</p>
-        <button 
-          onClick={onViewProfile}
-          className="px-8 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all font-semibold shadow-lg hover:shadow-xl"
-        >
-          View Full Profile
-        </button>
+        <p className="text-gray-700 mb-4">You can view your full profile by clicking on your name and student ID above.</p>
       </section>
     </div>
   )

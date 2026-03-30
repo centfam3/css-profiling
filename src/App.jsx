@@ -4,7 +4,6 @@ import axios from 'axios'
 import LoginPage from './components/LoginPage'
 import FacultyDashboard from './page/FacultyDashboard'
 import StudentDashboard from './page/StudentDashboard'
-import StudentProfilePage from './page/StudentProfilePage'
 
 function AppContent() {
   const [user, setUser] = useState(null)
@@ -110,17 +109,6 @@ function AppContent() {
         element={
           user?.role === 'student' ? (
             <StudentDashboard user={user} onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/" replace />
-          )
-        } 
-      />
-      
-      <Route 
-        path="/student-profile" 
-        element={
-          user?.role === 'student' ? (
-            <StudentProfilePage student={user} onBack={() => navigate('/student-dashboard')} />
           ) : (
             <Navigate to="/" replace />
           )

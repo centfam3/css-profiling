@@ -95,6 +95,28 @@ export default function StudentViewModal({ isOpen, onClose, student }) {
             </div>
           </section>
 
+          {/* Documents Section */}
+            <section>
+                <h3 className={sectionHeaderClasses}><span className="w-8 h-px bg-indigo-100"></span> Documents</h3>
+                <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
+                    <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Medical Certificate</p>
+                        {student.medicalCert ? (
+                            <a
+                                href={`http://localhost:5000/uploads/${student.medicalCert}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg text-sm font-semibold hover:bg-indigo-200 transition"
+                            >
+                                <FaClipboardList /> View Certificate
+                            </a>
+                        ) : (
+                            <p className="text-sm text-gray-500 italic">No medical certificate uploaded.</p>
+                        )}
+                    </div>
+                </div>
+            </section>
+
           {/* Academic History */}
           <section>
             <h3 className={sectionHeaderClasses}><span className="w-8 h-px bg-indigo-100"></span> Academic History</h3>
