@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import StudentSidebar from '../components/StudentSidebar'
 import StudentNavbar from '../components/StudentNavbar'
@@ -35,7 +36,7 @@ export default function StudentDashboard({ user, onLogout }) {
       case 'events-assigned':
         return <EventParticipation student={user} />
       case 'announcements':
-        return <StudentAnnouncements />
+        return <StudentAnnouncements student={user} />
       default:
         return <DashboardHome student={user} onViewProfile={() => setIsProfileModalOpen(true)} />
     }
@@ -79,6 +80,39 @@ export default function StudentDashboard({ user, onLogout }) {
 }
 
 function DashboardHome({ student, onViewProfile }) {
+  const [announcements, setAnnouncements] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
+      try {
+        setLoading(true);
+        const [annResponse, eventsResponse] = await Promise.all([
+          axios.get('http://localhost:5000/api/announcements'),
+          axios.get('http://localhost:5000/api/events')
+        ]);
+
+        const studentEvents = eventsResponse.data
+          .filter(event => event.participants && event.participants.includes(student?.id))
+          .map(event => event.name);
+
+        const filtered = annResponse.data.filter(ann => {
+          const isPublished = ann.status === 'Published';
+          const isTargeted = ann.targetAudience === 'All Students' || studentEvents.includes(ann.targetAudience);
+          return isPublished && isTargeted;
+        }).reverse().slice(0, 3); // Only show top 3 latest announcements
+
+        setAnnouncements(filtered);
+      } catch (error) {
+        console.error('Error fetching announcements:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnnouncements();
+  }, [student?.id]);
+
   // Get student's actual data, with fallback values
   const firstName = student?.firstName || 'Student';
   const gradeLevelData = student?.academicHistory?.[0];
@@ -141,6 +175,46 @@ function DashboardHome({ student, onViewProfile }) {
         {/* Upcoming Events Section */}
         <section className="mb-8">
           <UpcomingEvents />
+        </section>
+
+        {/* Latest Announcements Section */}
+        <section className="mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold text-gray-900">Latest Announcements</h2>
+          </div>
+          <div className="space-y-4">
+            {loading ? (
+              <div className="p-8 text-center bg-white rounded-xl border border-gray-100 animate-pulse">
+                <p className="text-gray-400">Loading announcements...</p>
+              </div>
+            ) : announcements.length > 0 ? (
+              announcements.map((ann) => (
+                <div key={ann.id} className={`p-5 rounded-2xl border transition-all ${ann.category === 'Urgent' ? 'bg-red-50/50 border-red-100' : 'bg-white border-gray-100 shadow-sm hover:shadow-md'}`}>
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${ann.category === 'Urgent' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-indigo-100 text-indigo-700 border-indigo-200'}`}>
+                          {ann.category}
+                        </span>
+                        <span className="text-xs text-gray-400 font-medium">
+                          {new Date(ann.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                        </span>
+                      </div>
+                      <h3 className={`font-bold ${ann.category === 'Urgent' ? 'text-red-900' : 'text-gray-900'}`}>{ann.title}</h3>
+                      <p className={`text-sm mt-2 line-clamp-2 ${ann.category === 'Urgent' ? 'text-red-800' : 'text-gray-600'}`}>{ann.content}</p>
+                    </div>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 ${ann.category === 'Urgent' ? 'bg-red-100 text-red-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                      {ann.category === 'Urgent' ? <FaExclamationCircle /> : <FaBullhorn />}
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="p-8 text-center bg-white rounded-2xl border border-dashed border-gray-200">
+                <p className="text-gray-400 font-medium">No new announcements at this time.</p>
+              </div>
+            )}
+          </div>
         </section>
 
         {/* Quick Overview Sections */}

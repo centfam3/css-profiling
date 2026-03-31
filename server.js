@@ -12,6 +12,7 @@ const app = express();
 const PORT = 5000;
 const STUDENTS_FILE = path.join(__dirname, 'students.json');
 const EVENTS_FILE = path.join(__dirname, 'events.json');
+const ANNOUNCEMENTS_FILE = path.join(__dirname, 'announcements.json');
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
 
 // Ensure uploads directory exists
@@ -65,8 +66,108 @@ const writeEvents = (events) => {
   fs.writeFileSync(EVENTS_FILE, JSON.stringify(events, null, 2), 'utf8');
 };
 
+// Helper to read announcements
+const readAnnouncements = () => {
+  try {
+    if (!fs.existsSync(ANNOUNCEMENTS_FILE)) {
+      fs.writeFileSync(ANNOUNCEMENTS_FILE, '[]', 'utf8');
+      return [];
+    }
+    const data = fs.readFileSync(ANNOUNCEMENTS_FILE, 'utf8');
+    return JSON.parse(data || '[]');
+  } catch (err) {
+    console.error('Error reading announcements:', err);
+    return [];
+  }
+};
+
+// Helper to write announcements
+const writeAnnouncements = (announcements) => {
+  try {
+    fs.writeFileSync(ANNOUNCEMENTS_FILE, JSON.stringify(announcements, null, 2), 'utf8');
+  } catch (err) {
+    console.error('Error writing announcements:', err);
+  }
+};
+
+// ========== ANNOUNCEMENT ENDPOINTS (TOP PRIORITY) ==========
+
+// GET /api/announcements - Get all
+app.get('/api/announcements', (req, res) => {
+  console.log('[API] GET /api/announcements');
+  const announcements = readAnnouncements();
+  res.json(announcements);
+});
+
+// POST /api/announcements - Create
+app.post('/api/announcements', (req, res) => {
+  console.log('[API] POST /api/announcements:', req.body);
+  const announcements = readAnnouncements();
+  
+  if (!req.body.title || !req.body.content) {
+    return res.status(400).json({ message: 'Title and content are required' });
+  }
+  
+  const newAnnouncement = {
+    id: `ANN${Date.now()}`,
+    title: req.body.title,
+    content: req.body.content,
+    category: req.body.category || 'General',
+    date: req.body.date || new Date().toISOString(),
+    status: req.body.status || 'Published',
+    targetAudience: req.body.targetAudience || 'All Students',
+    priority: req.body.priority || 'Normal',
+    author: req.body.author || 'System Administrator'
+  };
+  
+  announcements.push(newAnnouncement);
+  writeAnnouncements(announcements);
+  res.status(201).json(newAnnouncement);
+});
+
+// PUT /api/announcements/:id - Update
+app.put('/api/announcements/:id', (req, res) => {
+  const id = req.params.id;
+  console.log(`[API] PUT /api/announcements/${id}:`, req.body);
+  const announcements = readAnnouncements();
+  const index = announcements.findIndex(a => a.id === id);
+  
+  if (index !== -1) {
+    const updatedAnnouncement = {
+      ...announcements[index],
+      ...req.body,
+      id: id // Ensure ID remains the same
+    };
+    announcements[index] = updatedAnnouncement;
+    writeAnnouncements(announcements);
+    res.json(updatedAnnouncement);
+  } else {
+    console.log(`[API Error] Announcement ${id} not found`);
+    res.status(404).json({ message: `Announcement ${id} not found` });
+  }
+});
+
+// DELETE /api/announcements/:id - Delete
+app.delete('/api/announcements/:id', (req, res) => {
+  const id = req.params.id;
+  console.log(`[API] DELETE /api/announcements/${id}`);
+  let announcements = readAnnouncements();
+  const originalLength = announcements.length;
+  announcements = announcements.filter(a => a.id !== id);
+  
+  if (announcements.length < originalLength) {
+    writeAnnouncements(announcements);
+    res.json({ message: 'Announcement deleted' });
+  } else {
+    res.status(404).json({ message: 'Announcement not found' });
+  }
+});
+
+// ========== AUTH & STUDENT ENDPOINTS ==========
+
 // POST /api/login - Unified login for Admin and Student
 app.post('/api/login', (req, res) => {
+  console.log(`Login attempt: ${req.body.email}`);
   const { email, password } = req.body;
   const students = readStudents();
 

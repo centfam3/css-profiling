@@ -41,102 +41,94 @@ export default function Sidebar({ isCollapsed: externalIsCollapsed, onToggle, ac
   }
 
   return (
-    <div className={`${isCollapsed ? 'w-16' : 'w-64'} bg-white border-r border-orange-100 flex flex-col transition-all duration-300 overflow-hidden shadow-sm`}>
+    <div className={`${isCollapsed ? 'w-20' : 'w-72'} bg-white border-r border-orange-100 flex flex-col transition-all duration-500 ease-in-out overflow-hidden shadow-[4px_0_24px_rgba(251,146,60,0.05)] z-30`}>
       {/* Header */}
-      <div className="h-16 border-b border-orange-100 flex items-center justify-between px-3 py-3">
-        <div className={`flex items-center gap-2.5 ${isCollapsed ? 'hidden' : ''}`}>
-          <div className="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center text-white font-bold text-sm">
-            PS
+      <div className="h-20 flex items-center justify-between px-4 py-4 mb-2">
+        <div className={`flex items-center gap-3 transition-opacity duration-300 ${isCollapsed ? 'opacity-0 invisible w-0' : 'opacity-100 visible'}`}>
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-white shadow-lg shadow-orange-200/50">
+            <FaClipboardList size={20} />
           </div>
-          <div>
-            <p className="text-sm font-bold text-black">ProfilingSystem</p>
-            <p className="text-xs text-gray-500">Faculty Panel</p>
+          <div className="flex flex-col">
+            <span className="text-sm font-black text-slate-800 tracking-tight leading-none">Admin Panel</span>
+            <span className="text-[10px] text-orange-400 font-bold uppercase tracking-widest mt-1">Management v2.0</span>
           </div>
         </div>
         <button
           onClick={handleToggle}
-          className="p-1.5 text-gray-400 hover:text-black hover:bg-orange-50 rounded-lg transition-all duration-200"
+          className={`p-2 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-all duration-300 ${isCollapsed ? 'mx-auto' : ''}`}
         >
-          <HiMenuAlt2 size={18} />
+          <HiMenuAlt2 size={22} className={isCollapsed ? 'rotate-180' : ''} />
         </button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 space-y-3">
+      <nav className="flex-1 overflow-y-auto px-3 space-y-8 custom-scrollbar pt-2">
         {navItems.map((section, idx) => (
-          <div key={section.section}>
+          <div key={section.section} className="space-y-2">
             {!isCollapsed && (
-              <p className="px-3 py-2 text-[10px] uppercase tracking-[0.15em] font-semibold text-gray-400">
+              <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">
                 {section.section}
               </p>
             )}
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               {section.items.map((item) => {
                 const isActive = activePage === item.page
                 return (
-                  <button
-                    key={item.page}
-                    onClick={() => handleNavigate(item.page)}
-                    className={`w-full flex items-center gap-3 mx-2 px-3 py-2 rounded-lg transition-all duration-150 cursor-pointer ${
-                      isActive
-                        ? 'bg-orange-500 text-white font-semibold shadow-sm'
-                        : 'text-gray-600 font-normal hover:bg-orange-50 hover:text-black'
-                    }`}
-                  >
-                    <span className={`w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 text-base transition-all ${
-                      isActive
-                        ? 'bg-white/20 text-white'
-                        : 'bg-gray-100 text-gray-500'
-                    }`}>
-                      {item.icon}
-                    </span>
-                    {!isCollapsed && (
-                      <div className="flex items-center gap-2 flex-1">
-                        <span>{item.label}</span>
-                        {item.badge && (
-                          <span className={`ml-auto text-[10px] font-bold rounded-full px-2 py-0.5 ${
-                            isActive
-                              ? 'bg-white/20 text-white'
-                              : 'bg-orange-100 text-black'
-                          }`}>
-                            {item.badge}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </button>
+                  <div key={item.page} className="px-1">
+                    <button
+                      onClick={() => handleNavigate(item.page)}
+                      className={`w-full group relative flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 border ${
+                        isActive
+                          ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-100'
+                          : 'bg-transparent border-transparent text-slate-600 hover:bg-orange-50 hover:text-orange-600'
+                      }`}
+                    >
+                      <span className={`text-lg transition-transform duration-300 group-hover:scale-110 ${
+                        isActive ? 'text-white' : 'text-slate-400 group-hover:text-orange-600'
+                      }`}>
+                        {item.icon}
+                      </span>
+                      
+                      {!isCollapsed && (
+                        <div className="flex items-center gap-2 flex-1">
+                          <span className="text-sm font-bold tracking-tight">{item.label}</span>
+                          {item.badge && (
+                            <span className={`ml-auto text-[10px] font-bold rounded-full px-2 py-0.5 ${
+                              isActive
+                                ? 'bg-white/20 text-white'
+                                : 'bg-orange-100 text-orange-600'
+                            }`}>
+                              {item.badge}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Active Indicator Bar */}
+                      {isActive && !isCollapsed && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-white rounded-r-full"></div>
+                      )}
+                    </button>
+                  </div>
                 )
               })}
             </div>
-            {idx < navItems.length - 1 && !isCollapsed && (
-              <div className="mx-3 my-2 border-t border-orange-100"></div>
-            )}
           </div>
         ))}
       </nav>
 
-      {/* Footer */}
-      <div className="bg-orange-50 border-t border-orange-100 px-3 py-3 mt-auto">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold text-xs flex-shrink-0 relative">
-            {user?.name ? getInitials(user.name) : 'A'}
-            <span className="absolute bottom-0 right-0 w-2 h-2 bg-green-400 rounded-full border-2 border-white"></span>
-          </div>
-          {!isCollapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-black truncate">{user?.name || 'Admin User'}</p>
-              <p className="text-[10px] text-gray-500 capitalize">{user?.role || 'Faculty'}</p>
+      {/* Footer / Logout Action */}
+      <div className="p-4 mt-auto">
+        <div className={`bg-orange-50/50 rounded-[2rem] p-2 border border-orange-100 transition-all duration-300 ${isCollapsed ? 'items-center' : ''}`}>
+          <button 
+            onClick={onLogout}
+            className={`w-full group flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-all duration-300 font-bold ${isCollapsed ? 'justify-center' : ''}`}
+          >
+            <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center shadow-sm group-hover:shadow-rose-100 transition-all">
+              <MdLogout size={14} className="group-hover:rotate-12 transition-transform" />
             </div>
-          )}
-          {!isCollapsed && (
-            <button 
-              onClick={onLogout}
-              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all duration-200 cursor-pointer"
-              title="Logout"
-            >
-              <MdLogout size={16} />
-            </button>
-          )}
+            {!isCollapsed && <span className="text-sm">Sign Out</span>}
+          </button>
         </div>
       </div>
     </div>

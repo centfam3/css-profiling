@@ -125,7 +125,7 @@ export default function StudentViewModal({ isOpen, onClose, student }) {
                 <thead className="bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
                   <tr>
                     <th className="px-4 py-3">Academic Year</th>
-                    <th className="px-4 py-3">Year Level</th>
+                    <th className="px-4 py-3">Grade Level</th>
                     <th className="px-4 py-3 text-center">GPA</th>
                     <th className="px-4 py-3">Awards & Recognition</th>
                   </tr>
@@ -182,7 +182,13 @@ export default function StudentViewModal({ isOpen, onClose, student }) {
                     </div>
                   </div>
                 ))}
-                {student.violations.length === 0 && <p className="text-sm text-gray-400 italic text-center py-4 bg-gray-50 rounded-xl">No violations recorded.</p>}
+                {student.violations.length === 0 && (
+                  <div className="flex justify-center py-4 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                    <span className="px-6 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black border border-emerald-100 shadow-sm uppercase tracking-widest transition-all hover:bg-emerald-100 cursor-default">
+                      None
+                    </span>
+                  </div>
+                )}
               </div>
             </section>
           </div>

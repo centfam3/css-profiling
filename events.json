@@ -1,1 +1,19 @@
-[]
+[
+  {
+    "id": "EVT1774933687427",
+    "name": "Programming JS",
+    "date": "2026-03-31",
+    "time": "16:09",
+    "endDate": "2026-03-31",
+    "endTime": "17:10",
+    "venue": "4th Floor",
+    "category": "Academic",
+    "description": "",
+    "maxParticipants": "29",
+    "participants": [
+      "s009",
+      "s1774489559267"
+    ],
+    "createdAt": "2026-03-31T05:08:07.427Z"
+  }
+]

@@ -49,13 +49,12 @@
     "lastName": "Roms",
     "password": "pao123",
     "photo": "",
-    "medicalCert": "1774510593282-15eaecfa81433a95276592b8f64dfa41.jpg",
     "personalInfo": {
-      "email": "pao@gmail.com",
-      "gender": "Male",
       "birthdate": "2006-04-01",
-      "contact": "0921228382",
+      "gender": "Male",
       "address": "adada",
+      "contact": "0921228382",
+      "email": "pao@gmail.com",
       "course": "CS",
       "yearLevel": "2nd Year"
     },
@@ -84,18 +83,13 @@
         "year": ""
       }
     ],
-    "violations": [
-      {
-        "description": "None",
-        "date": "2026-03-06",
-        "severity": "Minor"
-      }
-    ],
+    "violations": [],
     "skills": [
       "Programming",
       "Networking"
     ],
-    "affiliations": []
+    "affiliations": [],
+    "medicalCert": "1774931305375-student management.png"
   },
   {
     "id": "2201587",
@@ -137,6 +131,46 @@
     "nonAcademicActivities": [],
     "violations": [],
     "skills": [],
+    "affiliations": []
+  },
+  {
+    "id": "2201588",
+    "firstName": "luis",
+    "lastName": "bagulos",
+    "password": "luis123",
+    "photo": "",
+    "personalInfo": {
+      "birthdate": "2006-03-01",
+      "gender": "Male",
+      "address": "lalalal",
+      "contact": "09872131",
+      "email": "luis@gmail.com",
+      "course": "IT",
+      "yearLevel": "2nd Year"
+    },
+    "academicHistory": [
+      {
+        "year": "2021-2023",
+        "gradeLevel": "Grade 7",
+        "gpa": "90",
+        "awards": [
+          "WithHonor"
+        ]
+      }
+    ],
+    "nonAcademicActivities": [
+      {
+        "name": "BasketBall",
+        "role": "Water",
+        "year": "2010"
+      }
+    ],
+    "violations": [],
+    "skills": [
+      "Programming",
+      "Basketball",
+      "Tiktoker"
+    ],
     "affiliations": []
   }
 ]

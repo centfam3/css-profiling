@@ -478,7 +478,7 @@ export default function ProfileModal({ isOpen, onClose, student }) {
                     </div>
                     <div className="space-y-1">
                       <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest flex items-center gap-2.5">
-                        <FaBookOpen size={10} /> Year Level
+                        <FaBookOpen size={10} /> Grade Level
                       </p>
                       <p className="text-sm font-black text-indigo-700">{formData.personalInfo?.yearLevel || 'N/A'}</p>
                     </div>
@@ -566,7 +566,7 @@ export default function ProfileModal({ isOpen, onClose, student }) {
                   <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
                     <tr>
                       <th className="px-8 py-5">Academic Year</th>
-                      <th className="px-8 py-5">Year Level</th>
+                      <th className="px-8 py-5">Grade Level</th>
                       <th className="px-8 py-5 text-center">GPA</th>
                       <th className="px-8 py-5">Awards & Recognition</th>
                       {isEditMode && <th className="px-8 py-5 text-center w-24">Action</th>}
@@ -593,10 +593,13 @@ export default function ProfileModal({ isOpen, onClose, student }) {
                               onChange={(e) => handleArrayChange('academicHistory', idx, 'gradeLevel', e.target.value)}
                               className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 font-bold"
                             >
-                              <option value="1st Year">1st Year</option>
-                              <option value="2nd Year">2nd Year</option>
-                              <option value="3rd Year">3rd Year</option>
-                              <option value="4th Year">4th Year</option>
+                              <option value="">Select Grade</option>
+                              <option value="Grade 7">Grade 7</option>
+                              <option value="Grade 8">Grade 8</option>
+                              <option value="Grade 9">Grade 9</option>
+                              <option value="Grade 10">Grade 10</option>
+                              <option value="Grade 11">Grade 11</option>
+                              <option value="Grade 12">Grade 12</option>
                             </select>
                           ) : item.gradeLevel}
                         </td>
@@ -734,7 +737,13 @@ export default function ProfileModal({ isOpen, onClose, student }) {
                       </div>
                     );
                   })}
-                  {formData.violations.length === 0 && <p className="text-xs text-slate-400 italic text-center py-10 bg-white rounded-[2rem] border border-dashed border-slate-200">No violations recorded.</p>}
+                  {formData.violations.length === 0 && (
+                    <div className="flex justify-center py-6 bg-white rounded-[2rem] border border-dashed border-slate-200">
+                      <span className="px-6 py-2 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black border border-emerald-100 shadow-sm uppercase tracking-widest transition-all hover:bg-emerald-100 cursor-default">
+                        None
+                      </span>
+                    </div>
+                  )}
                   {!isEditMode && formData.violations.length === 0 && (
                     <div className="flex items-center justify-center gap-3 p-6 bg-emerald-50 rounded-[2rem] border border-emerald-100 text-emerald-600 text-[10px] font-black uppercase tracking-[0.1em] shadow-sm">
                       <FaCheckCircle size={14} className="animate-bounce" /> Good Standing - Clean Record

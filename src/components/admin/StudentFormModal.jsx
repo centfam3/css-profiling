@@ -216,9 +216,15 @@ export default function StudentFormModal({ isOpen, onClose, onSave, student }) {
                       <input value={item.year} onChange={(e) => updateEntry('academicHistory', idx, 'year', e.target.value)} className={inputClasses} placeholder="2023-2024" />
                     </div>
                     <div>
-                      <label className={labelClasses}>Year Level</label>
+                      <label className={labelClasses}>Grade Level</label>
                       <select value={item.gradeLevel} onChange={(e) => updateEntry('academicHistory', idx, 'gradeLevel', e.target.value)} className={inputClasses}>
-                        {['1st Year', '2nd Year', '3rd Year', '4th Year'].map(lvl => <option key={lvl} value={lvl}>{lvl}</option>)}
+                        <option value="">Select Grade</option>
+                        <option value="Grade 7">Grade 7</option>
+                        <option value="Grade 8">Grade 8</option>
+                        <option value="Grade 9">Grade 9</option>
+                        <option value="Grade 10">Grade 10</option>
+                        <option value="Grade 11">Grade 11</option>
+                        <option value="Grade 12">Grade 12</option>
                       </select>
                     </div>
                     <div>
@@ -284,6 +290,13 @@ export default function StudentFormModal({ isOpen, onClose, onSave, student }) {
                   </div>
                 </div>
               ))}
+              {formData.violations.length === 0 && (
+                <div className="flex justify-center py-4 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                  <span className="px-6 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black border border-emerald-100 shadow-sm uppercase tracking-widest transition-all hover:bg-emerald-100 cursor-default">
+                    None
+                  </span>
+                </div>
+              )}
             </div>
           </section>
 

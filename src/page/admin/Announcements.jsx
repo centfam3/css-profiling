@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import axios from 'axios';
 import { FaPlus, FaSearch, FaBullhorn, FaEdit, FaTrash, FaEye, FaClock, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
 import AnnouncementFormModal from '../../components/admin/AnnouncementFormModal';
 import DeleteConfirmModal from '../../components/admin/DeleteConfirmModal';
@@ -7,33 +8,70 @@ export default function Announcements() {
   const [announcements, setAnnouncements] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
+  const [loading, setLoading] = useState(true);
   
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState(null);
   const [deletingAnnouncement, setDeletingAnnouncement] = useState(null);
 
+  // Fetch announcements from backend
+  const fetchAnnouncements = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('http://localhost:5000/api/announcements');
+      setAnnouncements(response.data.reverse()); // Show newest first
+    } catch (error) {
+      console.error('Error fetching announcements:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAnnouncements();
+  }, []);
+
   const filteredAnnouncements = useMemo(() => {
     return announcements.filter(ann => {
-      const matchesSearch = ann.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            ann.content.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = (ann.title?.toLowerCase() || '').includes(searchTerm.toLowerCase()) || 
+                            (ann.content?.toLowerCase() || '').includes(searchTerm.toLowerCase());
       const matchesCategory = filterCategory === 'All' || ann.category === filterCategory;
       return matchesSearch && matchesCategory;
     });
   }, [announcements, searchTerm, filterCategory]);
 
-  const handleSave = (savedAnn) => {
-    if (editingAnnouncement) {
-      setAnnouncements(prev => prev.map(a => a.id === savedAnn.id ? savedAnn : a));
-    } else {
-      setAnnouncements(prev => [savedAnn, ...prev]);
+  const handleSave = async (savedAnn) => {
+    try {
+      console.log('Attempting to save announcement:', savedAnn);
+      if (editingAnnouncement) {
+        if (!savedAnn.id) {
+          throw new Error('Announcement ID is missing for update');
+        }
+        // Update existing announcement
+        await axios.put(`http://localhost:5000/api/announcements/${savedAnn.id}`, savedAnn);
+      } else {
+        // Create new announcement
+        await axios.post('http://localhost:5000/api/announcements', savedAnn);
+      }
+      await fetchAnnouncements(); // Refresh the list
+      setIsFormOpen(false);
+      setEditingAnnouncement(null);
+    } catch (error) {
+      console.error('Error saving announcement:', error.response?.data || error.message);
+      const errorMessage = error.response?.data?.message || error.message;
+      alert(`Failed to save announcement: ${errorMessage}`);
     }
-    setIsFormOpen(false);
-    setEditingAnnouncement(null);
   };
 
-  const handleDelete = (id) => {
-    setAnnouncements(prev => prev.filter(a => a.id !== id));
-    setDeletingAnnouncement(null);
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`http://localhost:5000/api/announcements/${id}`);
+      fetchAnnouncements(); // Refresh the list
+      setDeletingAnnouncement(null);
+    } catch (error) {
+      console.error('Error deleting announcement:', error);
+      alert('Failed to delete announcement');
+    }
   };
 
   const getCategoryStyles = (category) => {

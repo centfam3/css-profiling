@@ -1,83 +1,116 @@
-import { FaCalendarAlt } from 'react-icons/fa'
-
-const mockAnnouncements = [
-  {
-    id: 1,
-    title: 'Mid-Year Semester Break Schedule',
-    date: 'April 5, 2024',
-    category: 'Academic',
-    content:
-      'The mid-year break will be from April 20-26, 2024. Classes resume on April 27. Please plan your activities accordingly.',
-  },
-  {
-    id: 2,
-    title: 'New Library Extended Hours',
-    date: 'April 3, 2024',
-    category: 'Notice',
-    content:
-      'The library will now be open until 10 PM during weekdays to support student studying needs.',
-  },
-  {
-    id: 3,
-    title: 'Scholarship Application Deadline',
-    date: 'March 30, 2024',
-    category: 'Scholarship',
-    content:
-      'Apply now for the Merit-Based Scholarship 2024. Deadline is April 15, 2024. Interested candidates can submit applications at the Student Services Office.',
-  },
-  {
-    id: 4,
-    title: 'Campus Maintenance Notice',
-    date: 'March 28, 2024',
-    category: 'Maintenance',
-    content:
-      'Water and electrical maintenance will be conducted on parking areas from April 10-12. Kindly use alternative parking during these dates.',
-  },
-  {
-    id: 5,
-    title: 'Enrollment for Next Semester Opens',
-    date: 'March 25, 2024',
-    category: 'Academic',
-    content:
-      'Online enrollment for the next semester is now open. Register for your subjects through the student portal before April 5, 2024.',
-  },
-]
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { FaCalendarAlt, FaBullhorn, FaExclamationCircle } from 'react-icons/fa';
 
 function AnnouncementCard({ announcement }) {
   const categoryColor = {
-    Academic: 'bg-blue-100 text-blue-700',
-    Notice: 'bg-gray-100 text-gray-700',
-    Scholarship: 'bg-green-100 text-green-700',
-    Maintenance: 'bg-yellow-100 text-yellow-700',
-  }
+    General: 'bg-blue-100 text-blue-700 border-blue-200',
+    'Event Update': 'bg-indigo-100 text-indigo-700 border-indigo-200',
+    Urgent: 'bg-red-100 text-red-700 border-red-200',
+  };
+
+  const formatDate = (dateString) => {
+    try {
+      const options = { year: 'numeric', month: 'long', day: 'numeric' };
+      return new Date(dateString).toLocaleDateString(undefined, options);
+    } catch (e) {
+      return dateString;
+    }
+  };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition">
-      <div className="flex justify-between items-start mb-3">
-        <h3 className="text-lg font-semibold text-gray-900 max-w-sm">{announcement.title}</h3>
-        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${categoryColor[announcement.category] || categoryColor.Notice}`}>
+    <div className={`bg-white border rounded-2xl p-6 hover:shadow-lg transition-all duration-300 ${announcement.category === 'Urgent' ? 'border-red-100 shadow-red-50/50 shadow-md' : 'border-gray-100 shadow-sm'}`}>
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex items-start gap-4">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${announcement.category === 'Urgent' ? 'bg-red-50 text-red-600' : 'bg-indigo-50 text-indigo-600'}`}>
+            {announcement.category === 'Urgent' ? <FaExclamationCircle /> : <FaBullhorn />}
+          </div>
+          <div>
+            <h3 className={`text-lg font-bold leading-tight mb-1 ${announcement.category === 'Urgent' ? 'text-red-900' : 'text-gray-900'}`}>{announcement.title}</h3>
+            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest flex items-center gap-1.5">
+              <FaCalendarAlt className="opacity-70" />
+              {formatDate(announcement.date)}
+            </p>
+          </div>
+        </div>
+        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${categoryColor[announcement.category] || 'bg-gray-100 text-gray-700 border-gray-200'}`}>
           {announcement.category}
         </span>
       </div>
-      <p className="text-sm text-gray-500 mb-3 flex items-center gap-1.5">
-        <FaCalendarAlt className="text-gray-400" />
-        {announcement.date}
-      </p>
-      <p className="text-gray-700 leading-relaxed">{announcement.content}</p>
+      <div className={`text-sm leading-relaxed p-4 rounded-xl ${announcement.category === 'Urgent' ? 'bg-red-50/50 text-red-800' : 'bg-gray-50 text-gray-600'}`}>
+        {announcement.content}
+      </div>
     </div>
   )
 }
 
-export default function StudentAnnouncements() {
-  return (
-    <div>
-      <h1 className="text-3xl font-bold text-gray-900 mb-2">Announcements</h1>
-      <p className="text-gray-600 mb-6">Stay updated with the latest news and announcements from the administration</p>
+export default function StudentAnnouncements({ student }) {
+  const [announcements, setAnnouncements] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-      <div className="space-y-4">
-        {mockAnnouncements.map((announcement) => (
-          <AnnouncementCard key={announcement.id} announcement={announcement} />
-        ))}
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
+      try {
+        setLoading(true);
+        // Fetch announcements and events in parallel
+        const [annResponse, eventsResponse] = await Promise.all([
+          axios.get('http://localhost:5000/api/announcements'),
+          axios.get('http://localhost:5000/api/events')
+        ]);
+
+        // Get events student is registered for
+        const studentEvents = eventsResponse.data
+          .filter(event => event.participants && event.participants.includes(student?.id))
+          .map(event => event.name);
+
+        // Filter only published announcements for students
+        const filteredAnnouncements = annResponse.data.filter(ann => {
+          const isPublished = ann.status === 'Published';
+          const isTargeted = ann.targetAudience === 'All Students' || studentEvents.includes(ann.targetAudience);
+          return isPublished && isTargeted;
+        }).reverse();
+
+        setAnnouncements(filteredAnnouncements);
+      } catch (error) {
+        console.error('Error fetching announcements:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnnouncements();
+  }, [student?.id]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-gray-500 font-bold animate-pulse">Loading announcements...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="animate-fadeIn">
+      <div className="mb-8">
+        <h1 className="text-3xl font-black text-slate-800 tracking-tight mb-2">Announcements</h1>
+        <p className="text-slate-500 font-medium">Stay updated with the latest news and announcements from the administration</p>
+      </div>
+
+      <div className="space-y-6">
+        {announcements.length > 0 ? (
+          announcements.map((announcement) => (
+            <AnnouncementCard key={announcement.id} announcement={announcement} />
+          ))
+        ) : (
+          <div className="p-16 text-center bg-white rounded-[2rem] border border-dashed border-slate-200">
+            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FaBullhorn className="text-slate-200 text-3xl" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-800">No active announcements</h3>
+            <p className="text-slate-400 font-medium mt-1">Check back later for new updates from the administration.</p>
+          </div>
+        )}
       </div>
     </div>
   )
