@@ -1,62 +1,18 @@
 [
   {
-    "id": "s009",
-    "firstName": "W RIZ",
-    "lastName": "RADAAA",
-    "password": "password123",
-    "photo": "",
-    "personalInfo": {
-      "birthdate": "2006-04-29",
-      "gender": "Male",
-      "address": "Tacloban",
-      "contact": "0917-444-5555",
-      "email": "daniel.po@email.com",
-      "course": "IT",
-      "yearLevel": "3rd Year"
-    },
-    "academicHistory": [
-      {
-        "year": "2023-2024",
-        "gradeLevel": "3rd Year",
-        "gpa": 87,
-        "awards": []
-      }
-    ],
-    "nonAcademicActivities": [
-      {
-        "name": "Music Club",
-        "role": "Vocalist",
-        "year": "2024"
-      }
-    ],
-    "violations": [
-      {
-        "description": "Fighting",
-        "date": "2024-04-12",
-        "severity": "Major"
-      }
-    ],
-    "skills": [
-      "Basketball",
-      "Programming",
-      "Painting"
-    ],
-    "affiliations": []
-  },
-  {
     "id": "s1774489559267",
     "firstName": "Paolo",
-    "lastName": "Roms",
+    "lastName": "Romero",
     "password": "pao123",
     "photo": "",
     "personalInfo": {
-      "birthdate": "2006-04-01",
+      "birthdate": "2004-02-17",
       "gender": "Male",
       "address": "adada",
       "contact": "0921228382",
       "email": "pao@gmail.com",
-      "course": "CS",
-      "yearLevel": "2nd Year"
+      "course": "IT",
+      "yearLevel": "4th Year"
     },
     "academicHistory": [
       {
@@ -90,27 +46,6 @@
     ],
     "affiliations": [],
     "medicalCert": "1774931305375-student management.png"
-  },
-  {
-    "id": "2201587",
-    "firstName": "rtktkr",
-    "lastName": "jfgnjf",
-    "password": "12345",
-    "photo": "",
-    "personalInfo": {
-      "birthdate": "2008-03-01",
-      "gender": "Male",
-      "address": "gktmgktg",
-      "contact": "09294924",
-      "email": "male@gmail.com",
-      "course": "IT",
-      "yearLevel": "1st Year"
-    },
-    "academicHistory": [],
-    "nonAcademicActivities": [],
-    "violations": [],
-    "skills": [],
-    "affiliations": []
   },
   {
     "id": "220199",
@@ -172,5 +107,48 @@
       "Tiktoker"
     ],
     "affiliations": []
+  },
+  {
+    "id": "2201589",
+    "firstName": "Mark Vincent",
+    "lastName": "Famudulan",
+    "password": "cent123",
+    "photo": "",
+    "personalInfo": {
+      "birthdate": "2004-01-03",
+      "gender": "Male",
+      "address": "pulo birmingham village",
+      "contact": "0917-444-5555",
+      "email": "cent3@gmail.com",
+      "course": "IT",
+      "yearLevel": "4th Year"
+    },
+    "academicHistory": [
+      {
+        "year": "2020",
+        "gradeLevel": "Grade 10",
+        "gpa": "84",
+        "awards": []
+      }
+    ],
+    "nonAcademicActivities": [
+      {
+        "name": "Intramurals 2020",
+        "role": "Basketball Player",
+        "year": "2020"
+      }
+    ],
+    "violations": [],
+    "skills": [
+      "BasketBall",
+      "Badminton"
+    ],
+    "affiliations": [
+      {
+        "orgName": "Jeremiah Org",
+        "role": "VP",
+        "year": "2020"
+      }
+    ]
   }
 ]

@@ -367,10 +367,24 @@ app.put('/api/students/:id', (req, res) => {
 
 // DELETE /api/students/:id - Delete
 app.delete('/api/students/:id', (req, res) => {
+  const studentId = req.params.id;
   let students = readStudents();
-  students = students.filter(s => s.id !== req.params.id);
+  students = students.filter(s => s.id !== studentId);
   writeStudents(students);
-  res.json({ message: 'Student deleted' });
+
+  // Propagate deletion to events: remove student from all participants lists
+  let events = readEvents();
+  let eventsChanged = false;
+  events = events.map(event => {
+    if (event.participants && event.participants.includes(studentId)) {
+      event.participants = event.participants.filter(pid => pid !== studentId);
+      eventsChanged = true;
+    }
+    return event;
+  });
+  if (eventsChanged) writeEvents(events);
+
+  res.json({ message: 'Student deleted and removed from all events' });
 });
 
 // DELETE /api/students/:id/academic/:index
@@ -433,7 +447,27 @@ app.delete('/api/students/:id/skill/:skillName', (req, res) => {
 // GET /api/events - Get all events
 app.get('/api/events', (req, res) => {
   const events = readEvents();
-  res.json(events);
+  const students = readStudents();
+  const studentIds = new Set(students.map(s => s.id));
+
+  // Clean up orphaned participants (students that no longer exist)
+  let changed = false;
+  const cleanedEvents = events.map(event => {
+    const originalCount = event.participants?.length || 0;
+    const validParticipants = (event.participants || []).filter(id => studentIds.has(id));
+    
+    if (validParticipants.length !== originalCount) {
+      changed = true;
+      return { ...event, participants: validParticipants };
+    }
+    return event;
+  });
+
+  if (changed) {
+    writeEvents(cleanedEvents);
+  }
+
+  res.json(cleanedEvents);
 });
 
 // GET /api/events/:id - Get single event
