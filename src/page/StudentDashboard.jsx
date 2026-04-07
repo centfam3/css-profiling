@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import axios from 'axios'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import StudentSidebar from '../components/StudentSidebar'
 import StudentNavbar from '../components/StudentNavbar'
 import Footer from '../components/Footer'
@@ -9,7 +9,7 @@ import MyAchievements from '../components/MyAchievements'
 import EventParticipation from '../components/EventParticipation'
 import StudentAnnouncements from '../components/StudentAnnouncements'
 import UpcomingEvents from '../components/UpcomingEvents';
-import { FaGraduationCap, FaTrophy, FaCalendarAlt, FaBullhorn, FaClock, FaMapPin, FaUser } from 'react-icons/fa'
+import { FaGraduationCap, FaTrophy, FaCalendarAlt, FaBullhorn, FaClock, FaMapPin, FaUser, FaExclamationCircle } from 'react-icons/fa'
 
 const mockNotifications = [
   { id: 1, message: 'Your achievement "Dean\'s List" has been approved', timestamp: '2 hours ago' },
@@ -19,28 +19,15 @@ const mockNotifications = [
 
 export default function StudentDashboard({ user, onLogout }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const [isCollapsed, setIsCollapsed] = useState(false)
-  const [activePage, setActivePage] = useState('home')
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
 
-  const renderPage = () => {
-    switch (activePage) {
-      case 'home':
-        return <DashboardHome student={user} onViewProfile={() => setIsProfileModalOpen(true)} />
-      case 'achievements':
-      case 'achievements-academic':
-      case 'achievements-sports':
-        return <MyAchievements student={user} />
-      case 'events':
-      case 'events-available':
-      case 'events-assigned':
-        return <EventParticipation student={user} />
-      case 'announcements':
-        return <StudentAnnouncements student={user} />
-      default:
-        return <DashboardHome student={user} onViewProfile={() => setIsProfileModalOpen(true)} />
-    }
-  }
+  // Derive activePage from location
+  const activePage = useMemo(() => {
+    const path = location.pathname.split('/').pop()
+    return path === 'student-dashboard' ? 'home' : path
+  }, [location.pathname])
 
   return (
     <div className="flex h-screen overflow-hidden bg-orange-50">
@@ -49,7 +36,6 @@ export default function StudentDashboard({ user, onLogout }) {
         isCollapsed={isCollapsed}
         onToggle={() => setIsCollapsed(!isCollapsed)}
         activePage={activePage}
-        onNavigate={setActivePage}
         onLogout={onLogout}
       />
 
@@ -65,7 +51,19 @@ export default function StudentDashboard({ user, onLogout }) {
         />
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto p-6">{renderPage()}</main>
+        <main className="flex-1 overflow-y-auto p-6">
+          <Routes>
+            <Route path="/" element={<DashboardHome student={user} onViewProfile={() => setIsProfileModalOpen(true)} />} />
+            <Route path="/achievements" element={<MyAchievements student={user} />} />
+            <Route path="/achievements-academic" element={<MyAchievements student={user} />} />
+            <Route path="/achievements-sports" element={<MyAchievements student={user} />} />
+            <Route path="/events" element={<EventParticipation student={user} />} />
+            <Route path="/events-available" element={<EventParticipation student={user} />} />
+            <Route path="/events-assigned" element={<EventParticipation student={user} />} />
+            <Route path="/announcements" element={<StudentAnnouncements student={user} />} />
+            <Route path="*" element={<Navigate to="/student-dashboard" replace />} />
+          </Routes>
+        </main>
         <Footer />
       </div>
 
@@ -125,28 +123,28 @@ function DashboardHome({ student, onViewProfile }) {
       count: gpaData,
       icon: <FaGraduationCap className="text-2xl text-blue-500" />,
       color: 'bg-blue-50',
-      link: 'achievements',
+      to: '/student-dashboard/achievements-academic',
     },
     {
       title: 'Skills',
       count: student?.skills?.length || 0,
       icon: <FaTrophy className="text-2xl text-yellow-500" />,
       color: 'bg-yellow-50',
-      link: 'achievements',
+      to: '/student-dashboard/achievements',
     },
     {
       title: 'Activities',
       count: student?.nonAcademicActivities?.length || 0,
       icon: <FaClock className="text-2xl text-green-500" />,
       color: 'bg-green-50',
-      link: 'events',
+      to: '/student-dashboard/events',
     },
     {
       title: 'Year Level',
       count: yearLevel,
       icon: <FaCalendarAlt className="text-2xl text-purple-500" />,
       color: 'bg-purple-50',
-      link: 'announcements',
+      to: '/student-dashboard/announcements',
     },
   ]
 
@@ -162,7 +160,11 @@ function DashboardHome({ student, onViewProfile }) {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {studentStats.map((stat, idx) => (
-            <div key={idx} className={`${stat.color} rounded-xl p-6 border border-gray-200 hover:shadow-md transition`}>
+            <div 
+              key={idx} 
+              onClick={() => stat.to && navigate(stat.to)}
+              className={`${stat.color} rounded-xl p-6 border border-gray-200 hover:shadow-md transition cursor-pointer`}
+            >
               <div className="flex justify-between items-start mb-3">
                 <div className="font-semibold text-gray-700 text-sm">{stat.title}</div>
                 {stat.icon}

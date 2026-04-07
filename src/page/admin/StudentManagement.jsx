@@ -1,12 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { FaSearch, FaFilter, FaTimes, FaEdit, FaTrash, FaEye, FaTrophy, FaPlus, FaChevronRight } from 'react-icons/fa';
+import { FaSearch, FaFilter, FaTimes, FaTrophy, FaPlus, FaChevronRight } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import StudentViewModal from '../../components/admin/StudentViewModal';
 import StudentFormModal from '../../components/admin/StudentFormModal';
 import FilterPanel from '../../components/admin/FilterPanel';
 import DeleteConfirmModal from '../../components/admin/DeleteConfirmModal';
+import StudentCard from '../../components/admin/StudentCard';
 
 export default function StudentManagement() {
+  const navigate = useNavigate();
   const [students, setStudents] = useState([]);
   const [allSkills, setAllSkills] = useState([]);
   const [allStudentIds, setAllStudentIds] = useState([]);
@@ -19,7 +21,6 @@ export default function StudentManagement() {
   });
   
   // Modal states
-  const [viewingStudent, setViewingStudent] = useState(null);
   const [editingStudent, setEditingStudent] = useState(null);
   const [deletingStudent, setDeletingStudent] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -217,80 +218,12 @@ export default function StudentManagement() {
           </div>
         ) : students.length > 0 ? (
           students.map((student) => (
-            <div key={student.id} className="bg-white rounded-2xl shadow-sm border border-indigo-100 p-6 hover:shadow-xl hover:border-indigo-200 transition-all group flex flex-col h-full">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl font-bold group-hover:scale-110 transition-transform">
-                  {student.photo ? (
-                    <img src={`http://localhost:5000/uploads/${student.photo}`} alt="Profile" className="w-full h-full rounded-2xl object-cover" />
-                  ) : (
-                    <span>{student.firstName[0]}{student.lastName[0]}</span>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-gray-800 leading-tight">{student.firstName} {student.lastName}</h3>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{student.id}</p>
-                </div>
-              </div>
-
-              <div className="space-y-4 flex-1">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Year Level</p>
-                    <p className="text-xs font-bold text-gray-700">{student.personalInfo?.yearLevel || 'N/A'}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Birth Date</p>
-                    <p className="text-xs font-bold text-indigo-600">
-                      {student.personalInfo?.birthdate ? new Date(student.personalInfo.birthdate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
-                    </p>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Top Skills</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {student.skills && student.skills.length > 0 ? (
-                      <>
-                        {student.skills.slice(0, 3).map(skill => (
-                          <span key={skill} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full text-[9px] font-bold border border-indigo-100/50">
-                            {skill}
-                          </span>
-                        ))}
-                        {student.skills.length > 3 && (
-                          <span className="text-[9px] text-gray-400 font-bold pl-1">+{student.skills.length - 3} more</span>
-                        )}
-                      </>
-                    ) : (
-                      <span className="text-[9px] text-gray-400 italic font-medium ml-1">No skills listed</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 mt-8 pt-6 border-t border-gray-50">
-                <button 
-                  onClick={() => setViewingStudent(student)}
-                  className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all flex flex-col items-center gap-1"
-                >
-                  <FaEye size={14} />
-                  <span className="text-[8px] font-bold uppercase">View</span>
-                </button>
-                <button 
-                  onClick={() => { setEditingStudent(student); setIsFormOpen(true); }}
-                  className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all flex flex-col items-center gap-1"
-                >
-                  <FaEdit size={14} />
-                  <span className="text-[8px] font-bold uppercase">Edit</span>
-                </button>
-                <button 
-                  onClick={() => setDeletingStudent(student)}
-                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all flex flex-col items-center gap-1"
-                >
-                  <FaTrash size={14} />
-                  <span className="text-[8px] font-bold uppercase">Delete</span>
-                </button>
-              </div>
-            </div>
+            <StudentCard 
+              key={student.id} 
+              student={student} 
+              onEdit={(s) => { setEditingStudent(s); setIsFormOpen(true); }} 
+              onDelete={(s) => setDeletingStudent(s)} 
+            />
           ))
         ) : (
           <div className="col-span-full py-20 text-center bg-white rounded-2xl border border-dashed border-gray-200">
@@ -304,11 +237,6 @@ export default function StudentManagement() {
       </div>
 
       {/* Modals */}
-      <StudentViewModal 
-        isOpen={!!viewingStudent} 
-        onClose={() => setViewingStudent(null)} 
-        student={viewingStudent} 
-      />
       <StudentFormModal 
         isOpen={isFormOpen} 
         onClose={() => { setIsFormOpen(false); setEditingStudent(null); }} 

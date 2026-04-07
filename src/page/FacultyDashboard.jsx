@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import axios from 'axios'
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
@@ -14,11 +15,21 @@ import EventAssignment from './admin/EventAssignment'
 import EventHandlerView from './admin/EventHandlerView'
 import Announcements from './admin/Announcements'
 import NotificationsPage from './admin/NotificationsPage'
+import Reports from './admin/Reports'
+import StudentDetails from './admin/StudentDetails'
 import UpcomingEvents from '../components/UpcomingEvents';
 
 export default function FacultyDashboard({ user, onLogout }) {
   const [isCollapsed, setIsCollapsed] = useState(false)
-  const [activePage, setActivePage] = useState('dashboard')
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  // Derive activePage from location
+  const activePage = useMemo(() => {
+    const path = location.pathname.split('/').pop()
+    return path === 'dashboard' ? 'dashboard' : path
+  }, [location.pathname])
+
   const [isNotificationOpen, setIsNotificationOpen] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [students, setStudents] = useState([])
@@ -63,6 +74,7 @@ export default function FacultyDashboard({ user, onLogout }) {
       case 'handler-view': return 'Event Handler View'
       case 'announcements': return 'Announcements'
       case 'notifications': return 'Notifications Center'
+      case 'reports': return 'Reports Summary'
       default: return 'Faculty Dashboard'
     }
   }, [activePage])
@@ -84,8 +96,8 @@ export default function FacultyDashboard({ user, onLogout }) {
     });
 
     return [
-      { label: 'Total Students', value: students.length, icon: FaUserGraduate, color: 'blue' },
-      { label: 'Active Participants', value: activeParticipantIds.size, icon: FaRunning, color: 'green' },
+      { label: 'Total Students', value: students.length, icon: FaUserGraduate, color: 'blue', to: '/dashboard/students' },
+      { label: 'Active Participants', value: activeParticipantIds.size, icon: FaRunning, color: 'green', to: '/dashboard/events' },
     ];
   }, [students, events]);
 
@@ -104,7 +116,7 @@ export default function FacultyDashboard({ user, onLogout }) {
           <div className="p-5 border-b border-gray-100 flex justify-between items-center">
             <h3 className="font-bold text-gray-800">Recent Students</h3>
             <button 
-              onClick={() => setActivePage('students')}
+              onClick={() => navigate('/dashboard/students')}
               className="text-indigo-600 text-sm font-semibold hover:underline cursor-pointer"
             >
               View All
@@ -121,14 +133,18 @@ export default function FacultyDashboard({ user, onLogout }) {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {students.slice(0, 5).map((student) => (
-                  <tr key={student.id} className="hover:bg-gray-50 transition-colors">
+                  <tr 
+                    key={student.id} 
+                    onClick={() => navigate(`/dashboard/users/${student.id}`)}
+                    className="hover:bg-gray-50 transition-colors cursor-pointer group"
+                  >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs flex-shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
                           {student.firstName.charAt(0)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-800 truncate">{student.firstName} {student.lastName}</p>
+                          <p className="text-sm font-semibold text-gray-800 truncate group-hover:text-indigo-600 transition-colors">{student.firstName} {student.lastName}</p>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="text-[10px] text-gray-400 flex items-center gap-1">
                               <FaLaptopCode size={10} /> {student.personalInfo?.course}
@@ -162,23 +178,10 @@ export default function FacultyDashboard({ user, onLogout }) {
         </div>
 
         {/* Upcoming Events List */}
-        <UpcomingEvents onViewAll={() => setActivePage('events')} />
+        <UpcomingEvents onViewAll={() => navigate('/dashboard/events')} />
       </div>
     </div>
   );
-
-  const renderActivePage = () => {
-    switch (activePage) {
-      case 'dashboard': return renderDashboard()
-      case 'students': return <StudentManagement />
-      case 'events': return <EventManagement />
-      case 'assignment': return <EventAssignment />
-      case 'handler-view': return <EventHandlerView />
-      case 'announcements': return <Announcements />
-      case 'notifications': return <NotificationsPage />
-      default: return renderDashboard()
-    }
-  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-orange-50/30">
@@ -187,7 +190,6 @@ export default function FacultyDashboard({ user, onLogout }) {
         isCollapsed={isCollapsed}
         onToggle={() => setIsCollapsed(!isCollapsed)}
         activePage={activePage}
-        onNavigate={setActivePage}
         onLogout={onLogout}
         user={user}
       />
@@ -216,7 +218,19 @@ export default function FacultyDashboard({ user, onLogout }) {
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto p-6 lg:p-10">
           <div className="max-w-[1600px] mx-auto pb-10">
-            {renderActivePage()}
+            <Routes>
+              <Route path="/" element={renderDashboard()} />
+              <Route path="/students" element={<StudentManagement />} />
+              <Route path="/events" element={<EventManagement />} />
+              <Route path="/assignment" element={<EventAssignment />} />
+              <Route path="/handler-view" element={<EventHandlerView />} />
+              <Route path="/announcements" element={<Announcements />} />
+               <Route path="/notifications" element={<NotificationsPage />} />
+               <Route path="/reports" element={<Reports />} />
+               <Route path="/users/:id" element={<StudentDetails />} />
+               {/* Redirect any other dashboard sub-routes to main dashboard */}
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
           </div>
         </main>
 

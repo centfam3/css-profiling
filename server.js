@@ -593,6 +593,26 @@ app.post('/api/events/:id/unregister', (req, res) => {
   }
 });
 
+// ========== REPORTS ENDPOINTS ==========
+
+// GET /api/reports/summary - Get summary of students per event
+app.get('/api/reports/summary', (req, res) => {
+  const events = readEvents();
+  const students = readStudents();
+  
+  const summary = events.map(event => {
+    const participantCount = (event.participants || []).length;
+    return {
+      eventId: event.id,
+      eventName: event.name,
+      eventDate: event.date,
+      totalStudents: participantCount
+    };
+  });
+  
+  res.json(summary);
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });

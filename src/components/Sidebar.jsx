@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { NavLink } from 'react-router-dom'
 import { FaUsers, FaCalendarAlt, FaClipboardList, FaEye, FaBullhorn, FaBell } from 'react-icons/fa'
 import { MdLogout, MdDashboard, MdPeople, MdMenuBook, MdCalendarToday, MdBarChart, MdCheckCircle, MdAssignment, MdChat, MdAccountCircle, MdSettings } from 'react-icons/md'
 import { HiMenuAlt2 } from 'react-icons/hi'
@@ -7,17 +8,18 @@ const navItems = [
   {
     section: 'Main',
     items: [
-      { label: 'Dashboard Overview', icon: <MdDashboard />, page: 'dashboard' },
-      { label: 'Student Management', icon: <FaUsers />, page: 'students' },
-      { label: 'Event Management', icon: <FaCalendarAlt />, page: 'events' },
-      { label: 'Event Assignment', icon: <FaClipboardList />, page: 'assignment' },
-      { label: 'Event Handler View', icon: <FaEye />, page: 'handler-view' },
-      { label: 'Announcements', icon: <FaBullhorn />, page: 'announcements' },
+      { label: 'Dashboard Overview', icon: <MdDashboard />, to: '/dashboard' },
+      { label: 'Student Management', icon: <FaUsers />, to: '/dashboard/students' },
+      { label: 'Event Management', icon: <FaCalendarAlt />, to: '/dashboard/events' },
+      { label: 'Event Assignment', icon: <FaClipboardList />, to: '/dashboard/assignment' },
+      { label: 'Event Handler View', icon: <FaEye />, to: '/dashboard/handler-view' },
+      { label: 'Announcements', icon: <FaBullhorn />, to: '/dashboard/announcements' },
+      { label: 'Reports', icon: <MdBarChart />, to: '/dashboard/reports' },
     ],
   },
 ]
 
-export default function Sidebar({ isCollapsed: externalIsCollapsed, onToggle, activePage, onNavigate, onLogout, user }) {
+export default function Sidebar({ isCollapsed: externalIsCollapsed, onToggle, activePage, onLogout, user }) {
   const [internalCollapsed, setInternalCollapsed] = useState(false)
   const isCollapsed = externalIsCollapsed !== undefined ? externalIsCollapsed : internalCollapsed
 
@@ -31,12 +33,6 @@ export default function Sidebar({ isCollapsed: externalIsCollapsed, onToggle, ac
       onToggle()
     } else {
       setInternalCollapsed(!internalCollapsed)
-    }
-  }
-
-  const handleNavigate = (page) => {
-    if (onNavigate) {
-      onNavigate(page)
     }
   }
 
@@ -72,43 +68,47 @@ export default function Sidebar({ isCollapsed: externalIsCollapsed, onToggle, ac
             )}
             <div className="space-y-1">
               {section.items.map((item) => {
-                const isActive = activePage === item.page
                 return (
-                  <div key={item.page} className="px-1">
-                    <button
-                      onClick={() => handleNavigate(item.page)}
-                      className={`w-full group relative flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 border ${
+                  <div key={item.to} className="px-1">
+                    <NavLink
+                      to={item.to}
+                      end={item.to === '/dashboard'}
+                      className={({ isActive }) => `w-full group relative flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 border ${
                         isActive
                           ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-100'
                           : 'bg-transparent border-transparent text-slate-600 hover:bg-orange-50 hover:text-orange-600'
                       }`}
                     >
-                      <span className={`text-lg transition-transform duration-300 group-hover:scale-110 ${
-                        isActive ? 'text-white' : 'text-slate-400 group-hover:text-orange-600'
-                      }`}>
-                        {item.icon}
-                      </span>
-                      
-                      {!isCollapsed && (
-                        <div className="flex items-center gap-2 flex-1">
-                          <span className="text-sm font-bold tracking-tight">{item.label}</span>
-                          {item.badge && (
-                            <span className={`ml-auto text-[10px] font-bold rounded-full px-2 py-0.5 ${
-                              isActive
-                                ? 'bg-white/20 text-white'
-                                : 'bg-orange-100 text-orange-600'
-                            }`}>
-                              {item.badge}
-                            </span>
+                      {({ isActive }) => (
+                        <>
+                          <span className={`text-lg transition-transform duration-300 group-hover:scale-110 ${
+                            isActive ? 'text-white' : 'text-slate-400 group-hover:text-orange-600'
+                          }`}>
+                            {item.icon}
+                          </span>
+                          
+                          {!isCollapsed && (
+                            <div className="flex items-center gap-2 flex-1">
+                              <span className="text-sm font-bold tracking-tight">{item.label}</span>
+                              {item.badge && (
+                                <span className={`ml-auto text-[10px] font-bold rounded-full px-2 py-0.5 ${
+                                  isActive
+                                    ? 'bg-white/20 text-white'
+                                    : 'bg-orange-100 text-orange-600'
+                                }`}>
+                                  {item.badge}
+                                </span>
+                              )}
+                            </div>
                           )}
-                        </div>
-                      )}
 
-                      {/* Active Indicator Bar */}
-                      {isActive && !isCollapsed && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-white rounded-r-full"></div>
+                          {/* Active Indicator Bar */}
+                          {isActive && !isCollapsed && (
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-white rounded-r-full"></div>
+                          )}
+                        </>
                       )}
-                    </button>
+                    </NavLink>
                   </div>
                 )
               })}

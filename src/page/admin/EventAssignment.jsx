@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { FaSearch, FaCalendarAlt, FaMapMarkerAlt, FaUsers, FaPlus, FaTimes, FaExclamationTriangle, FaCheckCircle, FaFilter, FaLaptopCode, FaBookOpen } from 'react-icons/fa';
 
 export default function EventAssignment() {
+  const navigate = useNavigate();
   const [events, setEvents] = useState([]);
   const [students, setStudents] = useState([]);
   const [selectedEventId, setSelectedEventId] = useState('');
@@ -203,12 +205,15 @@ export default function EventAssignment() {
                 {assignedStudents.map(student => (
                   <tr key={student.id} className="hover:bg-red-50/30 transition-colors group">
                     <td className="px-6 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                      <div 
+                        onClick={() => navigate(`/dashboard/users/${student.id}`)}
+                        className="flex items-center gap-3 cursor-pointer group/item"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs flex-shrink-0 group-hover/item:bg-indigo-600 group-hover/item:text-white transition-colors">
                           {student.firstName.charAt(0)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-gray-800 truncate">{student.firstName} {student.lastName}</p>
+                          <p className="text-xs font-bold text-gray-800 truncate group-hover/item:text-indigo-600 transition-colors">{student.firstName} {student.lastName}</p>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="text-[9px] text-gray-400 flex items-center gap-1">
                               <FaLaptopCode size={10} /> {student.personalInfo?.course}
@@ -291,12 +296,15 @@ export default function EventAssignment() {
               {candidateStudents.map(student => (
                 <div key={student.id} className="bg-white border border-gray-100 rounded-xl p-4 hover:border-indigo-200 hover:shadow-md transition-all group">
                   <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center font-bold text-sm group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                    <div 
+                      onClick={() => navigate(`/dashboard/users/${student.id}`)}
+                      className="flex items-center gap-3 cursor-pointer group/item"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center font-bold text-sm group-hover/item:bg-indigo-600 group-hover/item:text-white transition-colors">
                         {student.firstName.charAt(0)}
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-gray-800">{student.firstName} {student.lastName}</p>
+                        <p className="text-sm font-bold text-gray-800 group-hover/item:text-indigo-600 transition-colors">{student.firstName} {student.lastName}</p>
                         <p className="text-[10px] text-gray-400 font-medium">{student.id}</p>
                       </div>
                     </div>

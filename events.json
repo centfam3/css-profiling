@@ -1,16 +1,18 @@
 [
   {
-    "id": "EVT1774933687427",
-    "name": "Programming JS",
-    "date": "2026-03-31",
-    "time": "16:09",
-    "endDate": "2026-03-31",
-    "endTime": "17:10",
-    "venue": "4th Floor",
+    "id": "EVT1775456641424",
+    "name": "jsdjnsdnjjnjnsajn",
+    "date": "2026-04-01",
+    "time": "14:24",
+    "endDate": "2026-04-06",
+    "endTime": "14:28",
+    "venue": "adad",
     "category": "Academic",
-    "description": "",
-    "maxParticipants": "29",
-    "participants": [],
-    "createdAt": "2026-03-31T05:08:07.427Z"
+    "description": "adada",
+    "maxParticipants": 50,
+    "participants": [
+      "s1774489559267"
+    ],
+    "createdAt": "2026-04-06T06:24:01.424Z"
   }
 ]

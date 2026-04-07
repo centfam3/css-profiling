@@ -1,14 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { FaCalendarAlt, FaSearch, FaFileExport, FaEye, FaUsers, FaArrowRight, FaLaptopCode, FaBookOpen } from 'react-icons/fa';
-import StudentViewModal from '../../components/admin/StudentViewModal';
 
 export default function EventHandlerView() {
+  const navigate = useNavigate();
   const [events, setEvents] = useState([]);
   const [students, setStudents] = useState([]);
   const [selectedEventId, setSelectedEventId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [viewingStudent, setViewingStudent] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Fetch events and students from backend
@@ -148,12 +148,15 @@ export default function EventHandlerView() {
                     {String(idx + 1).padStart(2, '0')}
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm shadow-sm group-hover:scale-110 transition-transform flex-shrink-0">
+                    <div 
+                      onClick={() => navigate(`/dashboard/users/${student.id}`)}
+                      className="flex items-center gap-4 cursor-pointer group/item"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm shadow-sm group-hover/item:bg-indigo-600 group-hover/item:text-white transition-colors flex-shrink-0">
                         {student.firstName.charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-gray-800 truncate">{student.firstName} {student.lastName}</p>
+                        <p className="text-sm font-bold text-gray-800 truncate group-hover/item:text-indigo-600 transition-colors">{student.firstName} {student.lastName}</p>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-[10px] text-gray-400 flex items-center gap-1">
                             <FaLaptopCode size={10} /> {student.personalInfo?.course}
@@ -176,7 +179,7 @@ export default function EventHandlerView() {
                   </td>
                   <td className="px-6 py-4 text-center">
                     <button 
-                      onClick={() => setViewingStudent(student)}
+                      onClick={() => navigate(`/dashboard/users/${student.id}`)}
                       className="p-2.5 bg-gray-50 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all shadow-sm border border-gray-100 group-hover:border-indigo-100"
                       title="View Full Profile"
                     >
@@ -201,11 +204,7 @@ export default function EventHandlerView() {
         </div>
       </div>
 
-      <StudentViewModal 
-        isOpen={!!viewingStudent} 
-        onClose={() => setViewingStudent(null)} 
-        student={viewingStudent} 
-      />
+      {/* Profile Modal handled by navigate to details page */}
     </div>
   );
 }

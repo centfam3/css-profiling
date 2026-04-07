@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
 import { HiMenuAlt2 } from 'react-icons/hi'
 import { FaHome, FaTrophy, FaCalendarAlt, FaBullhorn, FaSignOutAlt, FaChevronDown, FaGraduationCap, FaRunning } from 'react-icons/fa'
 
@@ -6,7 +7,7 @@ const studentNavItems = [
   {
     section: 'Main',
     items: [
-      { label: 'Dashboard Home', icon: <FaHome />, page: 'home' },
+      { label: 'Dashboard Home', icon: <FaHome />, to: '/student-dashboard' },
     ],
   },
   {
@@ -15,19 +16,19 @@ const studentNavItems = [
       {
         label: 'My Achievements',
         icon: <FaTrophy />,
-        page: 'achievements',
+        to: '/student-dashboard/achievements',
         subItems: [
-          { label: 'Academic Achievements', icon: <FaGraduationCap />, page: 'achievements-academic' },
-          { label: 'Sports Achievements', icon: <FaRunning />, page: 'achievements-sports' },
+          { label: 'Academic Achievements', icon: <FaGraduationCap />, to: '/student-dashboard/achievements-academic' },
+          { label: 'Sports Achievements', icon: <FaRunning />, to: '/student-dashboard/achievements-sports' },
         ],
       },
       {
         label: 'Event Participation',
         icon: <FaCalendarAlt />,
-        page: 'events',
+        to: '/student-dashboard/events',
         subItems: [
-          { label: 'Available Events', icon: null, page: 'events-available' },
-          { label: 'Assigned Events', icon: null, page: 'events-assigned' },
+          { label: 'Available Events', icon: null, to: '/student-dashboard/events-available' },
+          { label: 'Assigned Events', icon: null, to: '/student-dashboard/events-assigned' },
         ],
       },
     ],
@@ -35,27 +36,22 @@ const studentNavItems = [
   {
     section: 'Communication',
     items: [
-      { label: 'Announcements', icon: <FaBullhorn />, page: 'announcements' },
+      { label: 'Announcements', icon: <FaBullhorn />, to: '/student-dashboard/announcements' },
     ],
   },
 ]
 
-export default function StudentSidebar({ isCollapsed: externalIsCollapsed, onToggle, activePage, onNavigate, onLogout }) {
+export default function StudentSidebar({ isCollapsed: externalIsCollapsed, onToggle, activePage, onLogout }) {
   const [internalCollapsed, setInternalCollapsed] = useState(false)
   const [expandedItems, setExpandedItems] = useState({})
   const isCollapsed = externalIsCollapsed !== undefined ? externalIsCollapsed : internalCollapsed
+  const location = useLocation()
 
   const handleToggle = () => {
     if (onToggle) {
       onToggle()
     } else {
       setInternalCollapsed(!internalCollapsed)
-    }
-  }
-
-  const handleNavigate = (page) => {
-    if (onNavigate) {
-      onNavigate(page)
     }
   }
 
@@ -98,60 +94,84 @@ export default function StudentSidebar({ isCollapsed: externalIsCollapsed, onTog
             )}
             <div className="space-y-1">
               {section.items.map((item) => {
-                const isActive = activePage === item.page || (item.subItems && item.subItems.some(sub => sub.page === activePage))
+                const isItemActive = location.pathname === item.to || (item.subItems && item.subItems.some(sub => location.pathname === sub.to))
                 const isExpanded = expandedItems[item.label]
 
                 return (
                   <div key={item.label} className="px-1">
-                    <button
-                      onClick={() => {
-                        if (item.subItems) {
-                          toggleExpand(item.label)
-                        } else {
-                          handleNavigate(item.page)
-                        }
-                      }}
-                      className={`w-full group relative flex items-center justify-between px-4 py-3 rounded-2xl transition-all duration-300 border ${
-                        isActive && !item.subItems
-                          ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-100'
-                          : isActive && item.subItems
-                          ? 'bg-orange-50 border-orange-100 text-orange-600'
-                          : 'bg-transparent border-transparent text-slate-600 hover:bg-orange-50 hover:text-orange-600'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className={`text-lg transition-transform duration-300 group-hover:scale-110 ${isActive && !item.subItems ? 'text-white' : 'text-slate-400 group-hover:text-orange-600'}`}>
-                          {item.icon}
-                        </span>
-                        {!isCollapsed && <span className="text-sm font-bold tracking-tight">{item.label}</span>}
-                      </div>
-                      
-                      {item.subItems && !isCollapsed && (
-                        <FaChevronDown size={10} className={`transition-transform duration-300 ${isExpanded ? 'rotate-180 text-orange-600' : 'text-slate-300'}`} />
-                      )}
+                    {item.subItems ? (
+                      <button
+                        onClick={() => toggleExpand(item.label)}
+                        className={`w-full group relative flex items-center justify-between px-4 py-3 rounded-2xl transition-all duration-300 border ${
+                          isItemActive
+                            ? 'bg-orange-50 border-orange-100 text-orange-600'
+                            : 'bg-transparent border-transparent text-slate-600 hover:bg-orange-50 hover:text-orange-600'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className={`text-lg transition-transform duration-300 group-hover:scale-110 ${isItemActive ? 'text-orange-600' : 'text-slate-400 group-hover:text-orange-600'}`}>
+                            {item.icon}
+                          </span>
+                          {!isCollapsed && <span className="text-sm font-bold tracking-tight">{item.label}</span>}
+                        </div>
+                        
+                        {!isCollapsed && (
+                          <FaChevronDown size={10} className={`transition-transform duration-300 ${isExpanded ? 'rotate-180 text-orange-600' : 'text-slate-300'}`} />
+                        )}
 
-                      {/* Active Indicator Bar */}
-                      {isActive && !isCollapsed && (
-                        <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full ${isActive && !item.subItems ? 'bg-white' : 'bg-orange-600'}`}></div>
-                      )}
-                    </button>
+                        {/* Active Indicator Bar */}
+                        {isItemActive && !isCollapsed && (
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-orange-600"></div>
+                        )}
+                      </button>
+                    ) : (
+                      <NavLink
+                        to={item.to}
+                        end={item.to === '/student-dashboard'}
+                        className={({ isActive }) => `w-full group relative flex items-center justify-between px-4 py-3 rounded-2xl transition-all duration-300 border ${
+                          isActive
+                            ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-100'
+                            : 'bg-transparent border-transparent text-slate-600 hover:bg-orange-50 hover:text-orange-600'
+                        }`}
+                      >
+                        {({ isActive }) => (
+                          <>
+                            <div className="flex items-center gap-3">
+                              <span className={`text-lg transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-orange-600'}`}>
+                                {item.icon}
+                              </span>
+                              {!isCollapsed && <span className="text-sm font-bold tracking-tight">{item.label}</span>}
+                            </div>
+
+                            {/* Active Indicator Bar */}
+                            {isActive && !isCollapsed && (
+                              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-white"></div>
+                            )}
+                          </>
+                        )}
+                      </NavLink>
+                    )}
 
                     {/* Sub Items */}
                     {item.subItems && isExpanded && !isCollapsed && (
                       <div className="mt-2 ml-4 pl-4 border-l-2 border-orange-100 space-y-1 animate-fadeIn">
                         {item.subItems.map((subItem) => (
-                          <button
-                            key={subItem.page}
-                            onClick={() => handleNavigate(subItem.page)}
-                            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
-                              activePage === subItem.page
+                          <NavLink
+                            key={subItem.to}
+                            to={subItem.to}
+                            className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
+                              isActive
                                 ? 'bg-orange-50 text-orange-600 shadow-sm'
                                 : 'text-slate-500 hover:text-orange-600 hover:bg-orange-50'
                             }`}
                           >
-                            <div className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${activePage === subItem.page ? 'bg-orange-600 scale-125' : 'bg-slate-300 group-hover:bg-orange-300'}`}></div>
-                            {subItem.label}
-                          </button>
+                            {({ isActive }) => (
+                              <>
+                                <div className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${isActive ? 'bg-orange-600 scale-125' : 'bg-slate-300 group-hover:bg-orange-300'}`}></div>
+                                {subItem.label}
+                              </>
+                            )}
+                          </NavLink>
                         ))}
                       </div>
                     )}
