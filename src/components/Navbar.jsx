@@ -2,7 +2,16 @@ import { useState, useEffect, useRef } from 'react'
 import { MdSearch, MdKeyboardArrowDown, MdPerson, MdSettings, MdHelpOutline, MdLogout } from 'react-icons/md'
 import { FaBell } from 'react-icons/fa'
 
-export default function Navbar({ title = 'Faculty Dashboard', subtitle = 'A.Y. 2025–2026 • 2nd Semester', searchPlaceholder = 'Search...', onNotificationClick, user, onLogout }) {
+export default function Navbar({ 
+  title = 'Faculty Dashboard', 
+  subtitle = 'A.Y. 2025–2026 • 2nd Semester', 
+  searchPlaceholder = 'Search...', 
+  onNotificationClick, 
+  user, 
+  onLogout,
+  searchValue = '',
+  onSearchChange
+}) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const dropdownRef = useRef(null)
 
@@ -43,6 +52,8 @@ export default function Navbar({ title = 'Faculty Dashboard', subtitle = 'A.Y. 2
           <MdSearch className="text-gray-300 text-base" />
           <input
             type="text"
+            value={searchValue}
+            onChange={(e) => onSearchChange?.(e.target.value)}
             placeholder={searchPlaceholder}
             className="bg-transparent outline-none text-xs text-black placeholder-gray-300 w-full"
           />

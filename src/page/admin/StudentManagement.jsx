@@ -7,7 +7,7 @@ import FilterPanel from '../../components/admin/FilterPanel';
 import DeleteConfirmModal from '../../components/admin/DeleteConfirmModal';
 import StudentCard from '../../components/admin/StudentCard';
 
-export default function StudentManagement() {
+export default function StudentManagement({ searchQuery = '' }) {
   const navigate = useNavigate();
   const [students, setStudents] = useState([]);
   const [allSkills, setAllSkills] = useState([]);
@@ -19,6 +19,22 @@ export default function StudentManagement() {
     studentId: '',
     minGpa: ''
   });
+  
+  // Filter students based on searchQuery (name or ID)
+  const filteredStudents = useMemo(() => {
+    if (!searchQuery) return students;
+    
+    const query = searchQuery.toLowerCase().trim();
+    return students.filter(student => {
+      const fullName = `${student.firstName} ${student.lastName}`.toLowerCase();
+      const studentId = (student.id || '').toString().toLowerCase();
+      const course = (student.personalInfo?.course || '').toLowerCase();
+      
+      return fullName.includes(query) || 
+             studentId.includes(query) || 
+             course.includes(query);
+    });
+  }, [students, searchQuery]);
   
   // Modal states
   const [editingStudent, setEditingStudent] = useState(null);
@@ -205,7 +221,10 @@ export default function StudentManagement() {
 
       {/* Results Count */}
       <div className="flex items-center gap-2 px-2">
-        <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Showing {students.length} Students</span>
+        <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">
+          Showing {filteredStudents.length} Students
+          {searchQuery && <span className="text-gray-400 normal-case ml-2">filtered by "{searchQuery}"</span>}
+        </span>
         <div className="h-px flex-1 bg-gray-100"></div>
       </div>
 
@@ -216,8 +235,8 @@ export default function StudentManagement() {
             <div className="animate-spin w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full mx-auto mb-4"></div>
             <p className="text-gray-400 font-medium">Loading students...</p>
           </div>
-        ) : students.length > 0 ? (
-          students.map((student) => (
+        ) : filteredStudents.length > 0 ? (
+          filteredStudents.map((student) => (
             <StudentCard 
               key={student.id} 
               student={student} 

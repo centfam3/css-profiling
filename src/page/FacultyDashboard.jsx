@@ -19,8 +19,15 @@ import Reports from './admin/Reports'
 import StudentDetails from './admin/StudentDetails'
 import UpcomingEvents from '../components/UpcomingEvents';
 
+const AccessDenied = () => (
+  <div className="flex items-center justify-center h-full text-red-500 text-xl font-semibold">
+    Access Denied — Admins only.
+  </div>
+);
+
 export default function FacultyDashboard({ user, onLogout }) {
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -205,6 +212,8 @@ export default function FacultyDashboard({ user, onLogout }) {
             onNotificationClick={() => setIsNotificationOpen(!isNotificationOpen)}
             user={user}
             onLogout={onLogout}
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
           />
           <NotificationDropdown 
             isOpen={isNotificationOpen}
@@ -220,15 +229,24 @@ export default function FacultyDashboard({ user, onLogout }) {
           <div className="max-w-[1600px] mx-auto pb-10">
             <Routes>
               <Route path="/" element={renderDashboard()} />
-              <Route path="/students" element={<StudentManagement />} />
-              <Route path="/events" element={<EventManagement />} />
-              <Route path="/assignment" element={<EventAssignment />} />
-              <Route path="/handler-view" element={<EventHandlerView />} />
-              <Route path="/announcements" element={<Announcements />} />
-               <Route path="/notifications" element={<NotificationsPage />} />
-               <Route path="/reports" element={<Reports />} />
-               <Route path="/users/:id" element={<StudentDetails />} />
-               {/* Redirect any other dashboard sub-routes to main dashboard */}
+              <Route path="/students" element={<StudentManagement searchQuery={searchQuery} />} />
+              <Route path="/events" element={<EventManagement searchQuery={searchQuery} />} />
+              <Route path="/assignment" element={<EventAssignment searchQuery={searchQuery} />} />
+              <Route path="/handler-view" element={<EventHandlerView searchQuery={searchQuery} />} />
+              <Route path="/announcements" element={<Announcements searchQuery={searchQuery} />} />
+              <Route path="/notifications" element={<NotificationsPage searchQuery={searchQuery} />} />
+              <Route 
+                path="/reports" 
+                element={
+                  user?.role === 'admin' ? (
+                    <Reports searchQuery={searchQuery} />
+                  ) : (
+                    <AccessDenied />
+                  )
+                } 
+              />
+              <Route path="/users/:id" element={<StudentDetails />} />
+              {/* Redirect any other dashboard sub-routes to main dashboard */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </div>
