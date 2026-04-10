@@ -177,7 +177,7 @@ export default function EventManagement() {
                     <FaUsers size={14} />
                   </div>
                   <p className="text-xs font-semibold text-gray-600">
-                    {event.participants.length} / {event.maxParticipants} Participants
+                    {(event.participants?.length || 0)} / {event.maxParticipants || 0} Participants
                   </p>
                 </div>
               </div>
@@ -224,10 +224,10 @@ export default function EventManagement() {
                       <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden max-w-[100px]">
                         <div 
                           className="h-full bg-indigo-500 rounded-full" 
-                          style={{ width: `${(event.participants.length / event.maxParticipants) * 100}%` }}
+                          style={{ width: `${((event.participants?.length || 0) / (event.maxParticipants || 1)) * 100}%` }}
                         ></div>
                       </div>
-                      <span className="text-xs font-bold text-gray-600">{event.participants.length}</span>
+                      <span className="text-xs font-bold text-gray-600">{event.participants?.length || 0}</span>
                     </div>
                   </td>
                   <td className="px-6 py-5 text-right">

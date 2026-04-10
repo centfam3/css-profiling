@@ -227,6 +227,7 @@ export default function FacultyDashboard({ user, onLogout }) {
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto p-6 lg:p-10">
           <div className="max-w-[1600px] mx-auto pb-10">
+             {/* PART2: DYNAMIC ROUTING */}
             <Routes>
               <Route path="/" element={renderDashboard()} />
               <Route path="/students" element={<StudentManagement searchQuery={searchQuery} />} />

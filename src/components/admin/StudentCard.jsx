@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 export default function StudentCard({ student, onEdit, onDelete }) {
   const navigate = useNavigate();
-
+  // Uses props: student.firstName, student.skills, student.personalInfo, etc.
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-indigo-100 p-6 hover:shadow-xl hover:border-indigo-200 transition-all group flex flex-col h-full">
       <div className="flex items-center gap-4 mb-6">

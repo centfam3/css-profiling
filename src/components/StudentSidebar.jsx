@@ -72,7 +72,7 @@ export default function StudentSidebar({ isCollapsed: externalIsCollapsed, onTog
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-black text-slate-800 tracking-tight leading-none">Student Portal</span>
-            <span className="text-[10px] text-orange-400 font-bold uppercase tracking-widest mt-1">Dashboard v2.0</span>
+            <span className="text-[10px] text-orange-400 font-bold uppercase tracking-widest mt-1">Dashboard</span>
           </div>
         </div>
         <button

@@ -77,6 +77,7 @@ export default function Navbar({
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl border border-orange-100 bg-white cursor-pointer hover:bg-orange-50 hover:border-orange-300 transition-all duration-200"
           >
+            {/* Navbar (Top Right Corner) Display the Admin name */}
             <div className="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center text-white text-[10px] font-bold">
               {user?.name ? getInitials(user.name) : 'A'}
             </div>
@@ -98,7 +99,7 @@ export default function Navbar({
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-black truncate">{user?.name || 'Admin User'}</p>
-                    <p className="text-[10px] text-gray-400 truncate">{user?.email || 'admin@example.com'}</p>
+                    <p className="text-[10px] text-gray-400 truncate">{user?.email || ''}</p>
                   </div>
                 </div>
               </div>

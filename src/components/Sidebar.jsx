@@ -46,7 +46,7 @@ export default function Sidebar({ isCollapsed: externalIsCollapsed, onToggle, ac
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-black text-slate-800 tracking-tight leading-none">Admin Panel</span>
-            <span className="text-[10px] text-orange-400 font-bold uppercase tracking-widest mt-1">Management v2.0</span>
+            <span className="text-[10px] text-orange-400 font-bold uppercase tracking-widest mt-1">Management </span>
           </div>
         </div>
         <button

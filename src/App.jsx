@@ -6,7 +6,7 @@ import FacultyDashboard from './page/FacultyDashboard'
 import StudentDashboard from './page/StudentDashboard'
 
 function AppContent() {
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState(null); // Global user state
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
 
@@ -71,7 +71,8 @@ function AppContent() {
       </div>
     )
   }
-
+  
+  //PART 1: CLIENT SIDE ROUTING
   return (
     <Routes>
       {/* Home redirect logic based on role */}
@@ -92,6 +93,7 @@ function AppContent() {
       <Route path="/login" element={<Navigate to="/" replace />} />
 
       {/* Admin routes */}
+      {/* User is passed as a prop to main pages: */}
       <Route 
         path="/dashboard/*" 
         element={

@@ -4,16 +4,121 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+import connectDB from './config/db.js';
+import Student from './models/Student.js';
+import Event from './models/Event.js';
+import Announcement from './models/Announcement.js';
+import Admin from './models/Admin.js';
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Create a log file
+const logFile = path.join(__dirname, 'server.log');
+
+function logError(msg) {
+  const timestamp = new Date().toISOString();
+  const logMsg = `[${timestamp}] ${msg}\n`;
+  console.log(logMsg); // Also log to console
+  try {
+    fs.appendFileSync(logFile, logMsg);
+  } catch (e) {
+    // Ignore file write errors
+  }
+}
+
 const app = express();
-const PORT = 5000;
-const STUDENTS_FILE = path.join(__dirname, 'students.json');
-const EVENTS_FILE = path.join(__dirname, 'events.json');
-const ANNOUNCEMENTS_FILE = path.join(__dirname, 'announcements.json');
+const PORT = process.env.PORT || 5000;
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
+
+// Connect to MongoDB
+await connectDB();
+
+// Cleanup database on startup - remove null IDs and fix indexes
+try {
+  console.log('🧹 Starting database cleanup...');
+  
+  // Remove documents with null or missing id
+  const result = await Student.deleteMany({ 
+    $or: [
+      { id: null },
+      { id: undefined },
+      { id: '' },
+      { id: { $exists: false } }
+    ]
+  });
+  
+  if (result.deletedCount > 0) {
+    console.log(`✓ Cleaned up ${result.deletedCount} corrupted student records`);
+  }
+
+  // Clean up duplicate or empty emails
+  const emailResult = await Student.deleteMany({
+    $or: [
+      { 'personalInfo.email': null },
+      { 'personalInfo.email': '' },
+      { 'personalInfo.email': { $exists: false } }
+    ]
+  });
+  
+  if (emailResult.deletedCount > 0) {
+    console.log(`✓ Cleaned up ${emailResult.deletedCount} records with missing emails`);
+  }
+  
+  // Drop ALL problematic indexes
+  try {
+    const indexes = await Student.collection.getIndexes();
+    console.log('📋 Existing indexes:', Object.keys(indexes));
+    
+    // Drop all indexes except _id
+    for (const indexName of Object.keys(indexes)) {
+      if (indexName !== '_id_') {
+        try {
+          await Student.collection.dropIndex(indexName);
+          console.log(`✓ Dropped index: ${indexName}`);
+        } catch (e) {
+          // Already dropped or doesn't exist
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('⚠ Could not list indexes:', e.message);
+  }
+  
+  // Create only the ID unique index (NO email index)
+  await Student.collection.createIndex({ id: 1 }, { unique: true, sparse: true });
+  console.log('✓ Database cleanup complete');
+} catch (error) {
+  console.error('⚠ Database cleanup error (non-critical):', error.message);
+}
+
+// Seed admin user if not exists
+try {
+  console.log('👤 Checking admin user...');
+  const existingAdmin = await Admin.findOne({ email: 'admin@pnc.edu' });
+  
+  if (!existingAdmin) {
+    const newAdmin = new Admin({
+      id: 'ADMIN001',
+      firstName: 'System',
+      lastName: 'Administrator',
+      email: 'admin@pnc.edu',
+      password: 'admin123',
+      role: 'admin'
+    });
+    
+    await newAdmin.save();
+    console.log('✓ Admin user created: admin@pnc.edu');
+  } else {
+    console.log('✓ Admin user already exists');
+  }
+} catch (error) {
+  console.error('⚠ Admin seeding error:', error.message);
+}
 
 // Ensure uploads directory exists
 if (!fs.existsSync(UPLOADS_DIR)) {
@@ -36,581 +141,694 @@ app.use('/uploads', express.static(UPLOADS_DIR));
 app.use(cors());
 app.use(express.json());
 
-// Helper to read students
-const readStudents = () => {
-  try {
-    const data = fs.readFileSync(STUDENTS_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch (err) {
-    return [];
+// Add middleware to log all requests
+app.use((req, res, next) => {
+  console.log(`\n📨 ${req.method} ${req.path}`);
+  if (req.method === 'POST' || req.method === 'PUT') {
+    console.log('📦 Body:', JSON.stringify(req.body).substring(0, 500));
   }
-};
+  next();
+});
 
-// Helper to write students
-const writeStudents = (students) => {
-  fs.writeFileSync(STUDENTS_FILE, JSON.stringify(students, null, 2), 'utf8');
-};
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', message: 'Server is running' });
+});
 
-// Helper to read events
-const readEvents = () => {
-  try {
-    const data = fs.readFileSync(EVENTS_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch (err) {
-    return [];
-  }
-};
-
-// Helper to write events
-const writeEvents = (events) => {
-  fs.writeFileSync(EVENTS_FILE, JSON.stringify(events, null, 2), 'utf8');
-};
-
-// Helper to read announcements
-const readAnnouncements = () => {
-  try {
-    if (!fs.existsSync(ANNOUNCEMENTS_FILE)) {
-      fs.writeFileSync(ANNOUNCEMENTS_FILE, '[]', 'utf8');
-      return [];
-    }
-    const data = fs.readFileSync(ANNOUNCEMENTS_FILE, 'utf8');
-    return JSON.parse(data || '[]');
-  } catch (err) {
-    console.error('Error reading announcements:', err);
-    return [];
-  }
-};
-
-// Helper to write announcements
-const writeAnnouncements = (announcements) => {
-  try {
-    fs.writeFileSync(ANNOUNCEMENTS_FILE, JSON.stringify(announcements, null, 2), 'utf8');
-  } catch (err) {
-    console.error('Error writing announcements:', err);
-  }
-};
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('🔴 GLOBAL ERROR:', err);
+  res.status(500).json({ message: 'Server error', error: err.message });
+});
 
 // ========== ANNOUNCEMENT ENDPOINTS (TOP PRIORITY) ==========
 
 // GET /api/announcements - Get all
-app.get('/api/announcements', (req, res) => {
-  console.log('[API] GET /api/announcements');
-  const announcements = readAnnouncements();
-  res.json(announcements);
+app.get('/api/announcements', async (req, res) => {
+  try {
+    console.log('[API] GET /api/announcements');
+    const announcements = await Announcement.find().sort({ date: -1 });
+    res.json(announcements);
+  } catch (error) {
+    console.error('Error fetching announcements:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
 });
 
 // POST /api/announcements - Create
-app.post('/api/announcements', (req, res) => {
-  console.log('[API] POST /api/announcements:', req.body);
-  const announcements = readAnnouncements();
-  
-  if (!req.body.title || !req.body.content) {
-    return res.status(400).json({ message: 'Title and content are required' });
+app.post('/api/announcements', async (req, res) => {
+  try {
+    console.log('[API] POST /api/announcements:', req.body);
+    
+    if (!req.body.title || !req.body.content) {
+      return res.status(400).json({ message: 'Title and content are required' });
+    }
+    
+    const newAnnouncement = new Announcement({
+      id: `ANN${Date.now()}`,
+      title: req.body.title,
+      content: req.body.content,
+      category: req.body.category || 'General',
+      date: req.body.date || new Date(),
+      status: req.body.status || 'Published',
+      targetAudience: req.body.targetAudience || 'All Students',
+      priority: req.body.priority || 'Normal',
+      author: req.body.author || 'System Administrator'
+    });
+    
+    await newAnnouncement.save();
+    res.status(201).json(newAnnouncement);
+  } catch (error) {
+    console.error('Error creating announcement:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
-  
-  const newAnnouncement = {
-    id: `ANN${Date.now()}`,
-    title: req.body.title,
-    content: req.body.content,
-    category: req.body.category || 'General',
-    date: req.body.date || new Date().toISOString(),
-    status: req.body.status || 'Published',
-    targetAudience: req.body.targetAudience || 'All Students',
-    priority: req.body.priority || 'Normal',
-    author: req.body.author || 'System Administrator'
-  };
-  
-  announcements.push(newAnnouncement);
-  writeAnnouncements(announcements);
-  res.status(201).json(newAnnouncement);
 });
 
 // PUT /api/announcements/:id - Update
-app.put('/api/announcements/:id', (req, res) => {
-  const id = req.params.id;
-  console.log(`[API] PUT /api/announcements/${id}:`, req.body);
-  const announcements = readAnnouncements();
-  const index = announcements.findIndex(a => a.id === id);
-  
-  if (index !== -1) {
-    const updatedAnnouncement = {
-      ...announcements[index],
-      ...req.body,
-      id: id // Ensure ID remains the same
-    };
-    announcements[index] = updatedAnnouncement;
-    writeAnnouncements(announcements);
-    res.json(updatedAnnouncement);
-  } else {
-    console.log(`[API Error] Announcement ${id} not found`);
-    res.status(404).json({ message: `Announcement ${id} not found` });
+app.put('/api/announcements/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    console.log(`[API] PUT /api/announcements/${id}:`, req.body);
+    
+    const updatedAnnouncement = await Announcement.findOneAndUpdate(
+      { id: id },
+      { ...req.body, updatedAt: new Date() },
+      { new: true }
+    );
+    
+    if (updatedAnnouncement) {
+      res.json(updatedAnnouncement);
+    } else {
+      console.log(`[API Error] Announcement ${id} not found`);
+      res.status(404).json({ message: `Announcement ${id} not found` });
+    }
+  } catch (error) {
+    console.error('Error updating announcement:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
 // DELETE /api/announcements/:id - Delete
-app.delete('/api/announcements/:id', (req, res) => {
-  const id = req.params.id;
-  console.log(`[API] DELETE /api/announcements/${id}`);
-  let announcements = readAnnouncements();
-  const originalLength = announcements.length;
-  announcements = announcements.filter(a => a.id !== id);
-  
-  if (announcements.length < originalLength) {
-    writeAnnouncements(announcements);
-    res.json({ message: 'Announcement deleted' });
-  } else {
-    res.status(404).json({ message: 'Announcement not found' });
+app.delete('/api/announcements/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    console.log(`[API] DELETE /api/announcements/${id}`);
+    
+    const result = await Announcement.findOneAndDelete({ id: id });
+    
+    if (result) {
+      res.json({ message: 'Announcement deleted' });
+    } else {
+      res.status(404).json({ message: 'Announcement not found' });
+    }
+  } catch (error) {
+    console.error('Error deleting announcement:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
 // ========== AUTH & STUDENT ENDPOINTS ==========
 
 // POST /api/login - Unified login for Admin and Student
-app.post('/api/login', (req, res) => {
-  console.log(`Login attempt: ${req.body.email}`);
-  const { email, password } = req.body;
-  const students = readStudents();
+app.post('/api/login', async (req, res) => {
+  try {
+    console.log(`Login attempt: ${req.body.email}`);
+    const { email, password } = req.body;
 
-  // 1. Check if it's the Admin first
-  if (email === 'admin@pnc.edu' && password === 'admin123') {
-    return res.json({
-      success: true,
-      role: 'admin',
-      user: { firstName: 'System', lastName: 'Administrator', email: 'admin@pnc.edu' }
+    // 1. Check if it's an Admin in the database
+    const admin = await Admin.findOne({ email });
+    if (admin && admin.password === password) {
+      // Don't send password back
+      const adminData = admin.toObject();
+      delete adminData.password;
+      return res.json({
+        success: true,
+        role: 'admin',
+        user: adminData
+      });
+    }
+
+    // 2. Check if it's a Student (using email or id as username)
+    const student = await Student.findOne({
+      $or: [
+        { 'personalInfo.email': email },
+        { id: email }
+      ]
     });
+
+    if (student && student.password === password) {
+      // Don't send password back
+      const studentData = student.toObject();
+      delete studentData.password;
+      return res.json({
+        success: true,
+        role: 'student',
+        user: studentData
+      });
+    }
+
+    // 3. Fail - invalid credentials
+    res.status(401).json({ success: false, message: 'Invalid email or password' });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
-
-  // 2. Check if it's a Student (using email or id as username)
-  const student = students.find(s => 
-    (s.personalInfo.email === email || s.id === email) && s.password === password
-  );
-
-  if (student) {
-    const { password, ...studentData } = student; // Don't send password back
-    return res.json({
-      success: true,
-      role: 'student',
-      user: studentData
-    });
-  }
-
-  // 3. Fail - invalid credentials
-  res.status(401).json({ success: false, message: 'Invalid email or password' });
 });
 
 // GET /api/students - Get all with filtering
-app.get('/api/students', (req, res) => {
-  const { skill, activity, studentId, minGpa } = req.query;
-  let students = readStudents();
+app.get('/api/students', async (req, res) => {
+  try {
+    const { skill, activity, studentId, minGpa } = req.query;
+    let query = {};
 
-  if (skill) {
-    const searchSkill = skill.trim().toLowerCase();
-    students = students.filter(s => 
-      s.skills && s.skills.some(sk => {
-        const skillName = typeof sk === 'string' ? sk : sk.name;
-        // Use partial match (includes) for better UX
-        return skillName && skillName.trim().toLowerCase().includes(searchSkill);
-      })
-    );
-  }
-  if (activity) {
-    const searchActivity = activity.trim().toLowerCase();
-    students = students.filter(s => 
-      s.nonAcademicActivities && s.nonAcademicActivities.some(a => 
-        a.name && a.name.trim().toLowerCase().includes(searchActivity)
-      )
-    );
-  }
-  if (studentId) {
-    const searchId = studentId.toString().trim().toLowerCase();
-    console.log(`[Backend Filter] Looking for Student ID: "${searchId}"`);
-    students = students.filter(s => {
-      const sId = (s.id || '').toString().trim().toLowerCase();
-      const match = sId === searchId;
-      if (match) console.log(`[Backend Filter] Match found: ${s.firstName} ${s.lastName} (${sId})`);
-      return match;
-    });
-    console.log(`[Backend Filter] Students found after ID filter: ${students.length}`);
-  }
-  if (minGpa) {
-    // Still check academicHistory for GPA
-    students = students.filter(s => 
-      s.academicHistory && s.academicHistory.some(h => parseFloat(h.gpa) >= parseFloat(minGpa))
-    );
-  }
+    if (skill) {
+      const searchSkill = skill.trim().toLowerCase();
+      query.skills = { $elemMatch: { $regex: searchSkill, $options: 'i' } };
+    }
+    if (activity) {
+      const searchActivity = activity.trim().toLowerCase();
+      query.nonAcademicActivities = { $elemMatch: { name: { $regex: searchActivity, $options: 'i' } } };
+    }
+    if (studentId) {
+      const searchId = studentId.toString().trim().toLowerCase();
+      console.log(`[Backend Filter] Looking for Student ID: "${searchId}"`);
+      query.id = { $regex: `^${searchId}$`, $options: 'i' };
+    }
+    if (minGpa) {
+      query['academicHistory.gpa'] = { $gte: parseFloat(minGpa) };
+    }
 
-  res.json(students);
+    const students = await Student.find(query);
+    res.json(students);
+  } catch (error) {
+    console.error('Error fetching students:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
 });
 
 // GET /api/students/:id - Get one
-app.get('/api/students/:id', (req, res) => {
-  const students = readStudents();
-  const student = students.find(s => s.id === req.params.id);
-  if (student) res.json(student);
-  else res.status(404).json({ message: 'Student not found' });
+app.get('/api/students/:id', async (req, res) => {
+  try {
+    const student = await Student.findOne({ id: req.params.id });
+    if (student) {
+      res.json(student);
+    } else {
+      res.status(404).json({ message: 'Student not found' });
+    }
+  } catch (error) {
+    console.error('Error fetching student:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
 });
 
 // POST /api/students - Create
-app.post('/api/students', (req, res) => {
-  const students = readStudents();
+app.post('/api/students', async (req, res) => {
+  logError('========== NEW STUDENT REQUEST ==========');
+  logError(`Body: ${JSON.stringify(req.body).substring(0, 1000)}`);
   
-  // Validate required fields
-  if (!req.body.firstName || !req.body.lastName) {
-    return res.status(400).json({ message: 'First name and last name are required' });
+  try {
+    logError('Step 1: Checking required fields...');
+    
+    if (!req.body.firstName || !req.body.lastName) {
+      logError('FAIL: Missing firstName or lastName');
+      return res.status(400).json({ message: 'First name and last name are required' });
+    }
+    
+    if (!req.body.password) {
+      logError('FAIL: Missing password');
+      return res.status(400).json({ message: 'Password is required' });
+    }
+    
+    const newId = req.body.id || `s${Date.now()}`;
+    logError(`Step 2: Using ID: ${newId}`);
+    
+    logError('Step 3: Checking for duplicate ID...');
+    const existingStudent = await Student.findOne({ id: newId });
+    if (existingStudent) {
+      logError(`FAIL: Duplicate ID ${newId}`);
+      return res.status(400).json({ message: `Student ID "${newId}" already exists` });
+    }
+    
+    logError('Step 4: Creating student object...');
+    const studentData = {
+      ...req.body,
+      id: newId
+    };
+    
+    logError(`Step 5: Creating model instance...`);
+    const newStudent = new Student(studentData);
+    logError('Model instance created successfully');
+    
+    logError('Step 6: Calling save()...');
+    const result = await newStudent.save();
+    logError('Step 7: Save completed successfully!');
+    logError(`Saved ID: ${result._id}`);
+    
+    res.status(201).json(result);
+    logError('========== REQUEST COMPLETE ==========\n');
+    
+  } catch (error) {
+    logError('❌ ERROR CAUGHT ❌');
+    logError(`Message: ${error.message}`);
+    logError(`Name: ${error.name}`);
+    logError(`Code: ${error.code}`);
+    logError(`Full stack: ${error.stack}`);
+    
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({ message: `${field} already exists` });
+    }
+    
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: error.message,
+      details: error.toString()
+    });
+    logError('========== REQUEST COMPLETE (ERROR) ==========\n');
   }
-  if (!req.body.personalInfo || !req.body.personalInfo.email) {
-    return res.status(400).json({ message: 'Email is required' });
-  }
-  if (!req.body.password) {
-    return res.status(400).json({ message: 'Password is required' });
-  }
-  
-  // Use provided id, or generate one if not provided
-  const newId = req.body.id && req.body.id.trim() ? req.body.id : `s${Date.now()}`;
-  
-  // Check if ID already exists
-  if (students.some(s => s.id === newId)) {
-    return res.status(400).json({ message: `Student ID "${newId}" already exists` });
-  }
-  
-  const newStudent = { 
-    ...req.body, 
-    id: newId
-  };
-  
-  students.push(newStudent);
-  writeStudents(students);
-  res.status(201).json(newStudent);
 });
 
-app.post('/api/students/:id/upload-photo', upload.single('photo'), (req, res) => {
-  const studentId = req.params.id;
-  const photo = req.file.filename;
+app.post('/api/students/:id/upload-photo', upload.single('photo'), async (req, res) => {
+  try {
+    const studentId = req.params.id;
+    const photo = req.file.filename;
 
-  const students = readStudents();
-  const index = students.findIndex(s => s.id === studentId);
+    const student = await Student.findOneAndUpdate(
+      { id: studentId },
+      { photo: photo },
+      { new: true }
+    );
 
-  if (index !== -1) {
-    students[index].photo = photo;
-    writeStudents(students);
-    res.json({ photo });
-  } else {
-    res.status(404).json({ message: 'Student not found' });
+    if (student) {
+      res.json({ photo });
+    } else {
+      res.status(404).json({ message: 'Student not found' });
+    }
+  } catch (error) {
+    console.error('Error uploading photo:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
-app.post('/api/students/:id/upload-medical', upload.single('medicalCert'), (req, res) => {
-  const studentId = req.params.id;
-  const medicalCert = req.file.filename;
+app.post('/api/students/:id/upload-medical', upload.single('medicalCert'), async (req, res) => {
+  try {
+    const studentId = req.params.id;
+    const medicalCert = req.file.filename;
 
-  const students = readStudents();
-  const index = students.findIndex(s => s.id === studentId);
+    const student = await Student.findOneAndUpdate(
+      { id: studentId },
+      { medicalCert: medicalCert },
+      { new: true }
+    );
 
-  if (index !== -1) {
-    students[index].medicalCert = medicalCert;
-    writeStudents(students);
-    res.json({ medicalCert });
-  } else {
-    res.status(404).json({ message: 'Student not found' });
+    if (student) {
+      res.json({ medicalCert });
+    } else {
+      res.status(404).json({ message: 'Student not found' });
+    }
+  } catch (error) {
+    console.error('Error uploading medical certificate:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
 // PUT /api/students/:id - Update full
-app.put('/api/students/:id', (req, res) => {
-  const oldId = req.params.id;
-  const newStudentData = req.body;
-  const newId = newStudentData.id;
+app.put('/api/students/:id', async (req, res) => {
+  try {
+    const oldId = req.params.id;
+    const newStudentData = req.body;
+    const newId = newStudentData.id;
 
-  console.log(`[Update] Old ID: ${oldId}, New ID: ${newId}`);
-  
-  let students = readStudents();
-  const index = students.findIndex(s => s.id === oldId);
-  
-  if (index !== -1) {
+    console.log(`[Update] Old ID: ${oldId}, New ID: ${newId}`);
+    
     // 1. Validation for duplicate ID (only if ID is changed)
     if (newId && newId !== oldId) {
-      const exists = students.some(s => s.id !== oldId && s.id.toLowerCase() === newId.toLowerCase());
+      const exists = await Student.findOne({ id: newId });
       if (exists) {
         console.log(`[Error] New ID ${newId} already exists`);
         return res.status(400).json({ message: `Student ID "${newId}" already exists` });
       }
     }
 
-    // 2. Propagate ID change to events (if applicable)
-    if (newId !== oldId) {
-      console.log(`[Update] Propagating ID change to events...`);
-      let events = readEvents();
-      let eventsChanged = false;
-      events = events.map(event => {
-        if (event.participants && event.participants.includes(oldId)) {
-          event.participants = event.participants.map(pid => pid === oldId ? newId : pid);
-          eventsChanged = true;
-        }
-        return event;
-      });
-      if (eventsChanged) writeEvents(events);
-    }
+    // 2. Update student data
+    const updatedStudent = await Student.findOneAndUpdate(
+      { id: oldId },
+      { ...newStudentData, updatedAt: new Date() },
+      { new: true }
+    );
 
-    // 3. Update student data and SAVE
-    // Ensure ID is included in the saved data
-    const updatedStudent = { ...newStudentData, id: newId || oldId };
-    students[index] = updatedStudent;
-    writeStudents(students);
-    
-    console.log(`[Success] Student ${oldId} updated to ${updatedStudent.id}`);
-    res.json(updatedStudent);
-  } else {
-    console.log(`[Error] Student ${oldId} not found`);
-    res.status(404).json({ message: 'Student not found' });
+    if (updatedStudent) {
+      // 3. Propagate ID change to events (if applicable)
+      if (newId && newId !== oldId) {
+        console.log(`[Update] Propagating ID change to events...`);
+        await Event.updateMany(
+          { participants: oldId },
+          { $set: { 'participants.$': newId } }
+        );
+      }
+
+      console.log(`[Success] Student ${oldId} updated to ${updatedStudent.id}`);
+      res.json(updatedStudent);
+    } else {
+      console.log(`[Error] Student ${oldId} not found`);
+      res.status(404).json({ message: 'Student not found' });
+    }
+  } catch (error) {
+    console.error('Error updating student:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
 // DELETE /api/students/:id - Delete
-app.delete('/api/students/:id', (req, res) => {
-  const studentId = req.params.id;
-  let students = readStudents();
-  students = students.filter(s => s.id !== studentId);
-  writeStudents(students);
+app.delete('/api/students/:id', async (req, res) => {
+  try {
+    const studentId = req.params.id;
+    
+    // Delete the student
+    await Student.findOneAndDelete({ id: studentId });
 
-  // Propagate deletion to events: remove student from all participants lists
-  let events = readEvents();
-  let eventsChanged = false;
-  events = events.map(event => {
-    if (event.participants && event.participants.includes(studentId)) {
-      event.participants = event.participants.filter(pid => pid !== studentId);
-      eventsChanged = true;
-    }
-    return event;
-  });
-  if (eventsChanged) writeEvents(events);
+    // Remove student from all event participants lists
+    await Event.updateMany(
+      { participants: studentId },
+      { $pull: { participants: studentId } }
+    );
 
-  res.json({ message: 'Student deleted and removed from all events' });
+    res.json({ message: 'Student deleted and removed from all events' });
+  } catch (error) {
+    console.error('Error deleting student:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
 });
 
 // DELETE /api/students/:id/academic/:index
-app.delete('/api/students/:id/academic/:index', (req, res) => {
-  const students = readStudents();
-  const index = students.findIndex(s => s.id === req.params.id);
-  if (index !== -1) {
-    students[index].academicHistory.splice(req.params.index, 1);
-    writeStudents(students);
-    res.json(students[index]);
-  } else res.status(404).json({ message: 'Student not found' });
+app.delete('/api/students/:id/academic/:index', async (req, res) => {
+  try {
+    const student = await Student.findOneAndUpdate(
+      { id: req.params.id },
+      { $unset: { [`academicHistory.${req.params.index}`]: 1 } },
+      { new: true }
+    );
+    
+    if (student) {
+      // Remove null entries
+      student.academicHistory = student.academicHistory.filter(h => h !== null);
+      await student.save();
+      res.json(student);
+    } else {
+      res.status(404).json({ message: 'Student not found' });
+    }
+  } catch (error) {
+    console.error('Error deleting academic history:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
 });
 
 // DELETE /api/students/:id/activity/:index
-app.delete('/api/students/:id/activity/:index', (req, res) => {
-  const students = readStudents();
-  const index = students.findIndex(s => s.id === req.params.id);
-  if (index !== -1) {
-    students[index].nonAcademicActivities.splice(req.params.index, 1);
-    writeStudents(students);
-    res.json(students[index]);
-  } else res.status(404).json({ message: 'Student not found' });
+app.delete('/api/students/:id/activity/:index', async (req, res) => {
+  try {
+    const student = await Student.findOneAndUpdate(
+      { id: req.params.id },
+      { $unset: { [`nonAcademicActivities.${req.params.index}`]: 1 } },
+      { new: true }
+    );
+    
+    if (student) {
+      student.nonAcademicActivities = student.nonAcademicActivities.filter(a => a !== null);
+      await student.save();
+      res.json(student);
+    } else {
+      res.status(404).json({ message: 'Student not found' });
+    }
+  } catch (error) {
+    console.error('Error deleting activity:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
 });
 
 // DELETE /api/students/:id/violation/:index
-app.delete('/api/students/:id/violation/:index', (req, res) => {
-  const students = readStudents();
-  const index = students.findIndex(s => s.id === req.params.id);
-  if (index !== -1) {
-    students[index].violations.splice(req.params.index, 1);
-    writeStudents(students);
-    res.json(students[index]);
-  } else res.status(404).json({ message: 'Student not found' });
+app.delete('/api/students/:id/violation/:index', async (req, res) => {
+  try {
+    const student = await Student.findOneAndUpdate(
+      { id: req.params.id },
+      { $unset: { [`violations.${req.params.index}`]: 1 } },
+      { new: true }
+    );
+    
+    if (student) {
+      student.violations = student.violations.filter(v => v !== null);
+      await student.save();
+      res.json(student);
+    } else {
+      res.status(404).json({ message: 'Student not found' });
+    }
+  } catch (error) {
+    console.error('Error deleting violation:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
 });
 
 // DELETE /api/students/:id/affiliation/:index
-app.delete('/api/students/:id/affiliation/:index', (req, res) => {
-  const students = readStudents();
-  const index = students.findIndex(s => s.id === req.params.id);
-  if (index !== -1) {
-    students[index].affiliations.splice(req.params.index, 1);
-    writeStudents(students);
-    res.json(students[index]);
-  } else res.status(404).json({ message: 'Student not found' });
+app.delete('/api/students/:id/affiliation/:index', async (req, res) => {
+  try {
+    const student = await Student.findOneAndUpdate(
+      { id: req.params.id },
+      { $unset: { [`affiliations.${req.params.index}`]: 1 } },
+      { new: true }
+    );
+    
+    if (student) {
+      student.affiliations = student.affiliations.filter(aff => aff !== null);
+      await student.save();
+      res.json(student);
+    } else {
+      res.status(404).json({ message: 'Student not found' });
+    }
+  } catch (error) {
+    console.error('Error deleting affiliation:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
 });
 
 // DELETE /api/students/:id/skill/:skillName
-app.delete('/api/students/:id/skill/:skillName', (req, res) => {
-  const students = readStudents();
-  const index = students.findIndex(s => s.id === req.params.id);
-  if (index !== -1) {
-    students[index].skills = students[index].skills.filter(s => s !== req.params.skillName);
-    writeStudents(students);
-    res.json(students[index]);
-  } else res.status(404).json({ message: 'Student not found' });
+app.delete('/api/students/:id/skill/:skillName', async (req, res) => {
+  try {
+    const student = await Student.findOneAndUpdate(
+      { id: req.params.id },
+      { $pull: { skills: req.params.skillName } },
+      { new: true }
+    );
+    
+    if (student) {
+      res.json(student);
+    } else {
+      res.status(404).json({ message: 'Student not found' });
+    }
+  } catch (error) {
+    console.error('Error deleting skill:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
 });
 
 // ========== EVENT ENDPOINTS ==========
 
 // GET /api/events - Get all events
-app.get('/api/events', (req, res) => {
-  const events = readEvents();
-  const students = readStudents();
-  const studentIds = new Set(students.map(s => s.id));
-
-  // Clean up orphaned participants (students that no longer exist)
-  let changed = false;
-  const cleanedEvents = events.map(event => {
-    const originalCount = event.participants?.length || 0;
-    const validParticipants = (event.participants || []).filter(id => studentIds.has(id));
+app.get('/api/events', async (req, res) => {
+  try {
+    let events = await Event.find().sort({ date: -1 });
     
-    if (validParticipants.length !== originalCount) {
-      changed = true;
-      return { ...event, participants: validParticipants };
-    }
-    return event;
-  });
+    // Clean up orphaned participants (students that no longer exist)
+    const students = await Student.find();
+    const studentIds = new Set(students.map(s => s.id));
 
-  if (changed) {
-    writeEvents(cleanedEvents);
+    const cleanedEvents = await Promise.all(
+      events.map(async (event) => {
+        // Ensure participants is always an array
+        let participants = Array.isArray(event.participants) ? event.participants : [];
+        const validParticipants = participants.filter(id => studentIds.has(id));
+        
+        if (validParticipants.length !== participants.length) {
+          await Event.updateOne({ _id: event._id }, { participants: validParticipants });
+        }
+        
+        // Return event with ensured participants array
+        return {
+          ...event.toObject(),
+          participants: validParticipants
+        };
+      })
+    );
+
+    res.json(cleanedEvents);
+  } catch (error) {
+    console.error('Error fetching events:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
-
-  res.json(cleanedEvents);
 });
 
 // GET /api/events/:id - Get single event
-app.get('/api/events/:id', (req, res) => {
-  const events = readEvents();
-  const event = events.find(e => e.id === req.params.id);
-  if (event) res.json(event);
-  else res.status(404).json({ message: 'Event not found' });
+app.get('/api/events/:id', async (req, res) => {
+  try {
+    const event = await Event.findOne({ id: req.params.id });
+    if (event) {
+      res.json(event);
+    } else {
+      res.status(404).json({ message: 'Event not found' });
+    }
+  } catch (error) {
+    console.error('Error fetching event:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
 });
 
 // POST /api/events - Create new event
-app.post('/api/events', (req, res) => {
-  const events = readEvents();
-  
-  // Validate required fields
-  if (!req.body.name || !req.body.date || !req.body.time || !req.body.venue) {
-    return res.status(400).json({ message: 'Event name, date, time, and venue are required' });
+app.post('/api/events', async (req, res) => {
+  try {
+    // Validate required fields
+    if (!req.body.name || !req.body.date || !req.body.time || !req.body.venue) {
+      return res.status(400).json({ message: 'Event name, date, time, and venue are required' });
+    }
+    
+    const newEvent = new Event({
+      id: `EVT${Date.now()}`,
+      title: req.body.name || req.body.title,
+      description: req.body.description || '',
+      date: req.body.date,
+      time: req.body.time,
+      endDate: req.body.endDate || req.body.date,
+      endTime: req.body.endTime || req.body.time,
+      location: req.body.venue || req.body.location,
+      category: req.body.category || 'General',
+      maxParticipants: req.body.maxParticipants || 50,
+      participants: req.body.participants || [],
+      status: 'Upcoming'
+    });
+    
+    await newEvent.save();
+    res.status(201).json(newEvent);
+  } catch (error) {
+    console.error('Error creating event:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
-  
-  const newEvent = {
-    id: `EVT${Date.now()}`,
-    name: req.body.name,
-    date: req.body.date,
-    time: req.body.time,
-    endDate: req.body.endDate || req.body.date, // Default to start date if not provided
-    endTime: req.body.endTime || req.body.time,   // Default to start time if not provided
-    venue: req.body.venue,
-    category: req.body.category || 'General',
-    description: req.body.description || '',
-    maxParticipants: req.body.maxParticipants || 50,
-    participants: req.body.participants || [],
-    createdAt: new Date().toISOString()
-  };
-  
-  events.push(newEvent);
-  writeEvents(events);
-  res.status(201).json(newEvent);
 });
 
 // PUT /api/events/:id - Update event
-app.put('/api/events/:id', (req, res) => {
-  const events = readEvents();
-  const index = events.findIndex(e => e.id === req.params.id);
-  
-  if (index !== -1) {
-    const updatedEvent = {
-      ...events[index],
-      ...req.body,
-      id: req.params.id // Keep original ID
-    };
-    events[index] = updatedEvent;
-    writeEvents(events);
-    res.json(updatedEvent);
-  } else {
-    res.status(404).json({ message: 'Event not found' });
+app.put('/api/events/:id', async (req, res) => {
+  try {
+    const updatedEvent = await Event.findOneAndUpdate(
+      { id: req.params.id },
+      { ...req.body, updatedAt: new Date() },
+      { new: true }
+    );
+    
+    if (updatedEvent) {
+      res.json(updatedEvent);
+    } else {
+      res.status(404).json({ message: 'Event not found' });
+    }
+  } catch (error) {
+    console.error('Error updating event:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
 // DELETE /api/events/:id - Delete event
-app.delete('/api/events/:id', (req, res) => {
-  let events = readEvents();
-  const originalLength = events.length;
-  events = events.filter(e => e.id !== req.params.id);
-  
-  if (events.length < originalLength) {
-    writeEvents(events);
-    res.json({ message: 'Event deleted' });
-  } else {
-    res.status(404).json({ message: 'Event not found' });
+app.delete('/api/events/:id', async (req, res) => {
+  try {
+    const result = await Event.findOneAndDelete({ id: req.params.id });
+    
+    if (result) {
+      res.json({ message: 'Event deleted' });
+    } else {
+      res.status(404).json({ message: 'Event not found' });
+    }
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
 // POST /api/events/:id/register - Student registers for event
-app.post('/api/events/:id/register', (req, res) => {
-  const { studentId } = req.body;
-  
-  if (!studentId) {
-    return res.status(400).json({ message: 'Student ID is required' });
-  }
-  
-  const events = readEvents();
-  const eventIndex = events.findIndex(e => e.id === req.params.id);
-  
-  if (eventIndex !== -1) {
-    const event = events[eventIndex];
+app.post('/api/events/:id/register', async (req, res) => {
+  try {
+    const { studentId } = req.body;
     
-    // Check if already registered
-    if (event.participants.includes(studentId)) {
-      return res.status(400).json({ message: 'Student already registered for this event' });
+    if (!studentId) {
+      return res.status(400).json({ message: 'Student ID is required' });
     }
     
-    // Check capacity
-    if (event.participants.length >= event.maxParticipants) {
-      return res.status(400).json({ message: 'Event is at maximum capacity' });
-    }
+    const event = await Event.findOne({ id: req.params.id });
     
-    event.participants.push(studentId);
-    writeEvents(events);
-    res.json(event);
-  } else {
-    res.status(404).json({ message: 'Event not found' });
+    if (event) {
+      // Check if already registered
+      if (event.participants.includes(studentId)) {
+        return res.status(400).json({ message: 'Student already registered for this event' });
+      }
+      
+      // Check capacity
+      if (event.participants.length >= event.maxParticipants) {
+        return res.status(400).json({ message: 'Event is at maximum capacity' });
+      }
+      
+      await Event.updateOne({ id: req.params.id }, { $push: { participants: studentId } });
+      const updatedEvent = await Event.findOne({ id: req.params.id });
+      res.json(updatedEvent);
+    } else {
+      res.status(404).json({ message: 'Event not found' });
+    }
+  } catch (error) {
+    console.error('Error registering for event:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
 // POST /api/events/:id/unregister - Student unregisters from event
-app.post('/api/events/:id/unregister', (req, res) => {
-  const { studentId } = req.body;
-  
-  if (!studentId) {
-    return res.status(400).json({ message: 'Student ID is required' });
-  }
-  
-  const events = readEvents();
-  const eventIndex = events.findIndex(e => e.id === req.params.id);
-  
-  if (eventIndex !== -1) {
-    const event = events[eventIndex];
-    event.participants = event.participants.filter(id => id !== studentId);
-    writeEvents(events);
-    res.json(event);
-  } else {
-    res.status(404).json({ message: 'Event not found' });
+app.post('/api/events/:id/unregister', async (req, res) => {
+  try {
+    const { studentId } = req.body;
+    
+    if (!studentId) {
+      return res.status(400).json({ message: 'Student ID is required' });
+    }
+    
+    const updatedEvent = await Event.findOneAndUpdate(
+      { id: req.params.id },
+      { $pull: { participants: studentId } },
+      { new: true }
+    );
+    
+    if (updatedEvent) {
+      res.json(updatedEvent);
+    } else {
+      res.status(404).json({ message: 'Event not found' });
+    }
+  } catch (error) {
+    console.error('Error unregistering from event:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
 // ========== REPORTS ENDPOINTS ==========
 
 // GET /api/reports/summary - Get summary of students per event
-app.get('/api/reports/summary', (req, res) => {
-  const events = readEvents();
-  const students = readStudents();
-  
-  const summary = events.map(event => {
-    const participantCount = (event.participants || []).length;
-    return {
-      eventId: event.id,
-      eventName: event.name,
-      eventDate: event.date,
-      totalStudents: participantCount
-    };
-  });
-  
-  res.json(summary);
+app.get('/api/reports/summary', async (req, res) => {
+  try {
+    const events = await Event.find();
+    
+    const summary = events.map(event => {
+      const participantCount = (event.participants || []).length;
+      return {
+        eventId: event.id,
+        eventName: event.title || event.name,
+        eventDate: event.date,
+        totalStudents: participantCount
+      };
+    });
+    
+    res.json(summary);
+  } catch (error) {
+    console.error('Error generating summary:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
 });
 
 app.listen(PORT, () => {
