@@ -44,6 +44,12 @@ function AppContent() {
       if (returnedRole === 'admin') {
         console.log('Admin user detected, navigating to /dashboard');
         navigate('/dashboard');
+      } else if (returnedRole === 'faculty_admin') {
+        console.log('Faculty admin user detected, navigating to /dashboard');
+        navigate('/dashboard');
+      } else if (returnedRole === 'faculty') {
+        console.log('Faculty user detected, navigating to /dashboard');
+        navigate('/dashboard');
       } else if (returnedRole === 'student') {
         console.log('Student user detected, navigating to /student-dashboard');
         navigate('/student-dashboard');
@@ -81,10 +87,12 @@ function AppContent() {
         element={
           !user ? (
             <LoginPage onLogin={handleLogin} />
-          ) : user.role === 'admin' ? (
+          ) : user.role === 'admin' || user.role === 'faculty_admin' || user.role === 'faculty' ? (
             <Navigate to="/dashboard" replace />
-          ) : (
+          ) : user.role === 'student' ? (
             <Navigate to="/student-dashboard" replace />
+          ) : (
+            <Navigate to="/login" replace />
           )
         } 
       />
@@ -97,7 +105,7 @@ function AppContent() {
       <Route 
         path="/dashboard/*" 
         element={
-          user?.role === 'admin' ? (
+          user?.role === 'admin' || user?.role === 'faculty_admin' || user?.role === 'faculty' ? (
             <FacultyDashboard user={user} onLogout={handleLogout} />
           ) : (
             <Navigate to="/" replace />

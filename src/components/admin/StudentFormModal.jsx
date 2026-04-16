@@ -21,7 +21,8 @@ export default function StudentFormModal({ isOpen, onClose, onSave, student }) {
     nonAcademicActivities: [],
     violations: [],
     skills: [],
-    affiliations: []
+    affiliations: [],
+    achievements: []  // Added: Initialize as empty array
   };
 
   const [formData, setFormData] = useState(student || initialForm);

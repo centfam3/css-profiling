@@ -11,6 +11,7 @@ import Student from './models/Student.js';
 import Event from './models/Event.js';
 import Announcement from './models/Announcement.js';
 import Admin from './models/Admin.js';
+import Faculty from './models/Faculty.js';
 
 dotenv.config();
 
@@ -42,6 +43,36 @@ await connectDB();
 try {
   console.log('🧹 Starting database cleanup...');
   
+  // ===== CLEAN UP ANNOUNCEMENTS =====
+  try {
+    // NOTE: Disabled aggressive cleanup that was deleting announcements
+    // Announcements are properly created with id field, so we don't need to delete them
+    
+    // Drop ALL problematic indexes on Announcements
+    try {
+      const annIndexes = await Announcement.collection.getIndexes();
+      console.log('📋 Announcement indexes:', Object.keys(annIndexes));
+      
+      // Drop all indexes except _id
+      for (const indexName of Object.keys(annIndexes)) {
+        if (indexName !== '_id_') {
+          try {
+            await Announcement.collection.dropIndex(indexName);
+            console.log(`✓ Dropped announcement index: ${indexName}`);
+          } catch (e) {
+            // Already dropped or doesn't exist
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('⚠ Could not list announcement indexes:', e.message);
+    }
+    
+  } catch (annError) {
+    console.warn('⚠ Announcement cleanup error:', annError.message);
+  }
+  
+  // ===== CLEAN UP STUDENTS =====
   // Remove documents with null or missing id
   const result = await Student.deleteMany({ 
     $or: [
@@ -168,7 +199,17 @@ app.get('/api/announcements', async (req, res) => {
   try {
     console.log('[API] GET /api/announcements');
     const announcements = await Announcement.find().sort({ date: -1 });
-    res.json(announcements);
+    
+    // Ensure all announcements have an 'id' field (fallback to _id if missing)
+    const enrichedAnnouncements = announcements.map(ann => {
+      const obj = ann.toObject();
+      if (!obj.id) {
+        obj.id = obj._id.toString();
+      }
+      return obj;
+    });
+    
+    res.json(enrichedAnnouncements);
   } catch (error) {
     console.error('Error fetching announcements:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -178,29 +219,70 @@ app.get('/api/announcements', async (req, res) => {
 // POST /api/announcements - Create
 app.post('/api/announcements', async (req, res) => {
   try {
-    console.log('[API] POST /api/announcements:', req.body);
+    console.log('[API] POST /api/announcements - Body:', JSON.stringify(req.body, null, 2));
     
-    if (!req.body.title || !req.body.content) {
+    const { title, content, category, date, status, targetAudience, priority, author } = req.body;
+    
+    if (!title || !content) {
+      console.error('[API Error] Missing required fields: title or content', { title, content });
       return res.status(400).json({ message: 'Title and content are required' });
     }
     
-    const newAnnouncement = new Announcement({
-      id: `ANN${Date.now()}`,
-      title: req.body.title,
-      content: req.body.content,
-      category: req.body.category || 'General',
-      date: req.body.date || new Date(),
-      status: req.body.status || 'Published',
-      targetAudience: req.body.targetAudience || 'All Students',
-      priority: req.body.priority || 'Normal',
-      author: req.body.author || 'System Administrator'
-    });
+    // Generate a truly unique ID using timestamp + random values
+    const uniqueSuffix = Math.random().toString(36).substring(2, 9) + Date.now();
+    const announcementId = `ANN${uniqueSuffix}`;
     
-    await newAnnouncement.save();
-    res.status(201).json(newAnnouncement);
+    const announcementData = {
+      id: announcementId,
+      title: title.trim(),
+      content: content.trim(),
+      category: category || 'General',
+      date: date ? new Date(date) : new Date(),
+      status: status || 'Published',
+      targetAudience: targetAudience || 'All Students',
+      priority: priority || 'Normal',
+      author: author || 'System Administrator',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    console.log('[API] Creating announcement with data:', announcementData);
+    
+    try {
+      const newAnnouncement = new Announcement(announcementData);
+      const savedAnnouncement = await newAnnouncement.save();
+      
+      console.log('[API] ✓ Announcement created successfully:', savedAnnouncement._id);
+      res.status(201).json(savedAnnouncement);
+    } catch (mongoError) {
+      // If we get a duplicate key error on 'id', try one more time with a different ID
+      if (mongoError.code === 11000 && mongoError.keyPattern?.id) {
+        console.warn('[API] Duplicate key error for id, retrying with new ID...');
+        
+        const retryId = `ANN${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+        announcementData.id = retryId;
+        
+        const retryAnnouncement = new Announcement(announcementData);
+        const savedAnnouncement = await retryAnnouncement.save();
+        
+        console.log('[API] ✓ Announcement created successfully on retry:', savedAnnouncement._id);
+        res.status(201).json(savedAnnouncement);
+      } else {
+        throw mongoError;
+      }
+    }
   } catch (error) {
-    console.error('Error creating announcement:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('[API Error] Error creating announcement:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack,
+      body: req.body
+    });
+    res.status(500).json({ 
+      message: 'Server error creating announcement', 
+      error: error.message,
+      details: error.toString()
+    });
   }
 });
 
@@ -210,16 +292,45 @@ app.put('/api/announcements/:id', async (req, res) => {
     const id = req.params.id;
     console.log(`[API] PUT /api/announcements/${id}:`, req.body);
     
-    const updatedAnnouncement = await Announcement.findOneAndUpdate(
+    const updateData = { ...req.body };
+    
+    // Convert date string to Date object if provided
+    if (updateData.date && typeof updateData.date === 'string') {
+      updateData.date = new Date(updateData.date);
+    }
+    
+    // Remove publishDate and id/_id from update data (shouldn't be modified)
+    delete updateData.publishDate;
+    delete updateData.id;
+    delete updateData._id;
+    
+    updateData.updatedAt = new Date();
+    
+    // Try finding by custom 'id' field first, then by MongoDB '_id'
+    let updatedAnnouncement = await Announcement.findOneAndUpdate(
       { id: id },
-      { ...req.body, updatedAt: new Date() },
-      { new: true }
+      updateData,
+      { returnDocument: 'after' }
     );
+    
+    // If not found by 'id', try by MongoDB '_id'
+    if (!updatedAnnouncement) {
+      try {
+        updatedAnnouncement = await Announcement.findByIdAndUpdate(
+          id,
+          updateData,
+          { new: true }
+        );
+      } catch (e) {
+        // MongoDB ObjectId parsing error
+        console.log(`[API Error] Could not find announcement by _id: ${id}`);
+      }
+    }
     
     if (updatedAnnouncement) {
       res.json(updatedAnnouncement);
     } else {
-      console.log(`[API Error] Announcement ${id} not found`);
+      console.log(`[API Error] Announcement ${id} not found by either 'id' or '_id'`);
       res.status(404).json({ message: `Announcement ${id} not found` });
     }
   } catch (error) {
@@ -234,7 +345,18 @@ app.delete('/api/announcements/:id', async (req, res) => {
     const id = req.params.id;
     console.log(`[API] DELETE /api/announcements/${id}`);
     
-    const result = await Announcement.findOneAndDelete({ id: id });
+    // Try finding by custom 'id' field first, then by MongoDB '_id'
+    let result = await Announcement.findOneAndDelete({ id: id });
+    
+    // If not found by 'id', try by MongoDB '_id'
+    if (!result) {
+      try {
+        result = await Announcement.findByIdAndDelete(id);
+      } catch (e) {
+        // MongoDB ObjectId parsing error
+        console.log(`[API Error] Could not find announcement by _id: ${id}`);
+      }
+    }
     
     if (result) {
       res.json({ message: 'Announcement deleted' });
@@ -249,7 +371,7 @@ app.delete('/api/announcements/:id', async (req, res) => {
 
 // ========== AUTH & STUDENT ENDPOINTS ==========
 
-// POST /api/login - Unified login for Admin and Student
+// POST /api/login - Unified login for Admin, Faculty and Student
 app.post('/api/login', async (req, res) => {
   try {
     console.log(`Login attempt: ${req.body.email}`);
@@ -268,7 +390,20 @@ app.post('/api/login', async (req, res) => {
       });
     }
 
-    // 2. Check if it's a Student (using email or id as username)
+    // 2. Check if it's Faculty (using email)
+    const faculty = await Faculty.findOne({ email: email.toLowerCase() });
+    if (faculty && faculty.password === password) {
+      // Don't send password back
+      const facultyData = faculty.toObject();
+      delete facultyData.password;
+      return res.json({
+        success: true,
+        role: facultyData.role || 'faculty',
+        user: facultyData
+      });
+    }
+
+    // 3. Check if it's a Student (using email or id as username)
     const student = await Student.findOne({
       $or: [
         { 'personalInfo.email': email },
@@ -287,7 +422,7 @@ app.post('/api/login', async (req, res) => {
       });
     }
 
-    // 3. Fail - invalid credentials
+    // 4. Fail - invalid credentials
     res.status(401).json({ success: false, message: 'Invalid email or password' });
   } catch (error) {
     console.error('Login error:', error);
@@ -331,6 +466,9 @@ app.get('/api/students/:id', async (req, res) => {
   try {
     const student = await Student.findOne({ id: req.params.id });
     if (student) {
+      console.log('📖 Fetching student:', req.params.id);
+      console.log('   Achievements:', student.achievements);
+      console.log('   Full object has achievements?', 'achievements' in student);
       res.json(student);
     } else {
       res.status(404).json({ message: 'Student not found' });
@@ -372,7 +510,8 @@ app.post('/api/students', async (req, res) => {
     logError('Step 4: Creating student object...');
     const studentData = {
       ...req.body,
-      id: newId
+      id: newId,
+      achievements: req.body.achievements || []  // Ensure achievements is initialized
     };
     
     logError(`Step 5: Creating model instance...`);
@@ -416,7 +555,7 @@ app.post('/api/students/:id/upload-photo', upload.single('photo'), async (req, r
     const student = await Student.findOneAndUpdate(
       { id: studentId },
       { photo: photo },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (student) {
@@ -438,7 +577,7 @@ app.post('/api/students/:id/upload-medical', upload.single('medicalCert'), async
     const student = await Student.findOneAndUpdate(
       { id: studentId },
       { medicalCert: medicalCert },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (student) {
@@ -474,7 +613,7 @@ app.put('/api/students/:id', async (req, res) => {
     const updatedStudent = await Student.findOneAndUpdate(
       { id: oldId },
       { ...newStudentData, updatedAt: new Date() },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (updatedStudent) {
@@ -526,7 +665,7 @@ app.delete('/api/students/:id/academic/:index', async (req, res) => {
     const student = await Student.findOneAndUpdate(
       { id: req.params.id },
       { $unset: { [`academicHistory.${req.params.index}`]: 1 } },
-      { new: true }
+      { returnDocument: 'after' }
     );
     
     if (student) {
@@ -549,7 +688,7 @@ app.delete('/api/students/:id/activity/:index', async (req, res) => {
     const student = await Student.findOneAndUpdate(
       { id: req.params.id },
       { $unset: { [`nonAcademicActivities.${req.params.index}`]: 1 } },
-      { new: true }
+      { returnDocument: 'after' }
     );
     
     if (student) {
@@ -571,7 +710,7 @@ app.delete('/api/students/:id/violation/:index', async (req, res) => {
     const student = await Student.findOneAndUpdate(
       { id: req.params.id },
       { $unset: { [`violations.${req.params.index}`]: 1 } },
-      { new: true }
+      { returnDocument: 'after' }
     );
     
     if (student) {
@@ -593,7 +732,7 @@ app.delete('/api/students/:id/affiliation/:index', async (req, res) => {
     const student = await Student.findOneAndUpdate(
       { id: req.params.id },
       { $unset: { [`affiliations.${req.params.index}`]: 1 } },
-      { new: true }
+      { returnDocument: 'after' }
     );
     
     if (student) {
@@ -615,7 +754,7 @@ app.delete('/api/students/:id/skill/:skillName', async (req, res) => {
     const student = await Student.findOneAndUpdate(
       { id: req.params.id },
       { $pull: { skills: req.params.skillName } },
-      { new: true }
+      { returnDocument: 'after' }
     );
     
     if (student) {
@@ -625,6 +764,80 @@ app.delete('/api/students/:id/skill/:skillName', async (req, res) => {
     }
   } catch (error) {
     console.error('Error deleting skill:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// POST /api/students/:id/achievements - Add achievement to student
+app.post('/api/students/:id/achievements', async (req, res) => {
+  try {
+    const { title, category, date, description, status } = req.body;
+
+    if (!title || !category) {
+      return res.status(400).json({ message: 'Title and category are required' });
+    }
+
+    if (!['Academic', 'Sports'].includes(category)) {
+      return res.status(400).json({ message: 'Category must be Academic or Sports' });
+    }
+
+    const student = await Student.findOne({ id: req.params.id });
+
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    console.log('📚 Adding achievement for student:', req.params.id);
+    console.log('   Before - Achievements:', student.achievements);
+
+    // Initialize achievements array if not exists
+    if (!student.achievements) {
+      student.achievements = [];
+    }
+
+    const newAchievement = {
+      id: `ACH${Date.now()}`,
+      title: title.trim(),
+      category: category,
+      date: date || new Date().toISOString().split('T')[0],
+      description: description || '',
+      status: status || 'approved'
+    };
+
+    student.achievements.push(newAchievement);
+    console.log('   Before Save - Achievements:', student.achievements);
+    
+    const savedStudent = await student.save();
+    
+    console.log('   After Save - Achievements:', savedStudent.achievements);
+    console.log('   Full saved student object keys:', Object.keys(savedStudent.toObject ? savedStudent.toObject() : savedStudent));
+
+    res.status(201).json(savedStudent);
+  } catch (error) {
+    console.error('❌ Error adding achievement:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// DELETE /api/students/:id/achievements/:achievementId - Delete achievement
+app.delete('/api/students/:id/achievements/:achievementId', async (req, res) => {
+  try {
+    const student = await Student.findOne({ id: req.params.id });
+
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    if (!student.achievements) {
+      return res.status(404).json({ message: 'Achievement not found' });
+    }
+
+    student.achievements = student.achievements.filter(a => a.id !== req.params.achievementId);
+    await student.save();
+
+    res.json(student);
+  } catch (error) {
+    console.error('Error deleting achievement:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -644,16 +857,20 @@ app.get('/api/events', async (req, res) => {
       events.map(async (event) => {
         // Ensure participants is always an array
         let participants = Array.isArray(event.participants) ? event.participants : [];
-        const validParticipants = participants.filter(id => studentIds.has(id));
+        let pendingRequests = Array.isArray(event.pendingRequests) ? event.pendingRequests : [];
         
-        if (validParticipants.length !== participants.length) {
-          await Event.updateOne({ _id: event._id }, { participants: validParticipants });
+        const validParticipants = participants.filter(id => studentIds.has(id));
+        const validPendingRequests = pendingRequests.filter(id => studentIds.has(id));
+        
+        if (validParticipants.length !== participants.length || validPendingRequests.length !== pendingRequests.length) {
+          await Event.updateOne({ _id: event._id }, { participants: validParticipants, pendingRequests: validPendingRequests });
         }
         
-        // Return event with ensured participants array
+        // Return event with ensured arrays
         return {
           ...event.toObject(),
-          participants: validParticipants
+          participants: validParticipants,
+          pendingRequests: validPendingRequests
         };
       })
     );
@@ -690,13 +907,15 @@ app.post('/api/events', async (req, res) => {
     
     const newEvent = new Event({
       id: `EVT${Date.now()}`,
-      title: req.body.name || req.body.title,
+      name: req.body.name || req.body.title || '',
+      title: req.body.name || req.body.title || '',
       description: req.body.description || '',
       date: req.body.date,
       time: req.body.time,
       endDate: req.body.endDate || req.body.date,
       endTime: req.body.endTime || req.body.time,
-      location: req.body.venue || req.body.location,
+      venue: req.body.venue || req.body.location || '',
+      location: req.body.venue || req.body.location || '',
       category: req.body.category || 'General',
       maxParticipants: req.body.maxParticipants || 50,
       participants: req.body.participants || [],
@@ -714,13 +933,16 @@ app.post('/api/events', async (req, res) => {
 // PUT /api/events/:id - Update event
 app.put('/api/events/:id', async (req, res) => {
   try {
+    console.log(`[API] PUT /api/events/${req.params.id}:`, req.body);
+    
     const updatedEvent = await Event.findOneAndUpdate(
       { id: req.params.id },
       { ...req.body, updatedAt: new Date() },
-      { new: true }
+      { returnDocument: 'after' }
     );
     
     if (updatedEvent) {
+      console.log(`✓ Event updated:`, updatedEvent);
       res.json(updatedEvent);
     } else {
       res.status(404).json({ message: 'Event not found' });
@@ -747,8 +969,15 @@ app.delete('/api/events/:id', async (req, res) => {
   }
 });
 
-// POST /api/events/:id/register - Student registers for event
-app.post('/api/events/:id/register', async (req, res) => {
+// POST /api/events/:id/request - Student requests to join event
+app.post('/api/events/:id/request', async (req, res) => {
+  console.log('[REQUEST] ====== REQUEST DEBUG ======');
+  console.log('[REQUEST] Full URL:', req.originalUrl);
+  console.log('[REQUEST] Params:', req.params);
+  console.log('[REQUEST] Body:', req.body);
+  console.log('[REQUEST] Headers:', req.headers);
+  console.log('[REQUEST] Method:', req.method);
+  console.log('[REQUEST] =============================');
   try {
     const { studentId } = req.body;
     
@@ -764,19 +993,98 @@ app.post('/api/events/:id/register', async (req, res) => {
         return res.status(400).json({ message: 'Student already registered for this event' });
       }
       
+      // Check if already has pending request
+      if (event.pendingRequests?.includes(studentId)) {
+        return res.status(400).json({ message: 'Request already pending for this event' });
+      }
+      
       // Check capacity
       if (event.participants.length >= event.maxParticipants) {
         return res.status(400).json({ message: 'Event is at maximum capacity' });
       }
       
-      await Event.updateOne({ id: req.params.id }, { $push: { participants: studentId } });
+      await Event.updateOne({ id: req.params.id }, { $push: { pendingRequests: studentId } });
       const updatedEvent = await Event.findOne({ id: req.params.id });
       res.json(updatedEvent);
     } else {
       res.status(404).json({ message: 'Event not found' });
     }
   } catch (error) {
-    console.error('Error registering for event:', error);
+    console.error('Error requesting for event:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// POST /api/events/:id/approve - Admin/Faculty approves a student request
+app.post('/api/events/:id/approve', async (req, res) => {
+  try {
+    const { studentId } = req.body;
+    
+    if (!studentId) {
+      return res.status(400).json({ message: 'Student ID is required' });
+    }
+    
+    const event = await Event.findOne({ id: req.params.id });
+    
+    if (event) {
+      // Check if student is in pending requests
+      if (!event.pendingRequests?.includes(studentId)) {
+        return res.status(400).json({ message: 'No pending request found for this student' });
+      }
+      
+      // Check if already registered
+      if (event.participants.includes(studentId)) {
+        return res.status(400).json({ message: 'Student already registered for this event' });
+      }
+      
+      // Check capacity
+      if (event.participants.length >= event.maxParticipants) {
+        return res.status(400).json({ message: 'Event is at maximum capacity' });
+      }
+      
+      // Remove from pending and add to participants
+      await Event.updateOne(
+        { id: req.params.id },
+        { 
+          $pull: { pendingRequests: studentId },
+          $push: { participants: studentId }
+        }
+      );
+      const updatedEvent = await Event.findOne({ id: req.params.id });
+      res.json(updatedEvent);
+    } else {
+      res.status(404).json({ message: 'Event not found' });
+    }
+  } catch (error) {
+    console.error('Error approving request:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// POST /api/events/:id/reject - Admin/Faculty rejects a student request
+app.post('/api/events/:id/reject', async (req, res) => {
+  try {
+    const { studentId } = req.body;
+    
+    if (!studentId) {
+      return res.status(400).json({ message: 'Student ID is required' });
+    }
+    
+    const event = await Event.findOne({ id: req.params.id });
+    
+    if (event) {
+      // Remove from pending requests only
+      await Event.updateOne(
+        { id: req.params.id },
+        { $pull: { pendingRequests: studentId } }
+      );
+      const updatedEvent = await Event.findOne({ id: req.params.id });
+      res.json(updatedEvent);
+    } else {
+      res.status(404).json({ message: 'Event not found' });
+    }
+  } catch (error) {
+    console.error('Error rejecting request:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -793,7 +1101,7 @@ app.post('/api/events/:id/unregister', async (req, res) => {
     const updatedEvent = await Event.findOneAndUpdate(
       { id: req.params.id },
       { $pull: { participants: studentId } },
-      { new: true }
+      { returnDocument: 'after' }
     );
     
     if (updatedEvent) {
@@ -818,15 +1126,174 @@ app.get('/api/reports/summary', async (req, res) => {
       const participantCount = (event.participants || []).length;
       return {
         eventId: event.id,
-        eventName: event.title || event.name,
-        eventDate: event.date,
+        eventName: event.title || event.name || 'Untitled Event',
+        eventDate: event.date || event.endDate || new Date().toISOString(),
         totalStudents: participantCount
       };
     });
     
+    // Sort by date descending (newest first)
+    summary.sort((a, b) => new Date(b.eventDate) - new Date(a.eventDate));
+    
     res.json(summary);
   } catch (error) {
     console.error('Error generating summary:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// ========== FACULTY ENDPOINTS ==========
+
+// GET /api/faculty - Get all faculty
+app.get('/api/faculty', async (req, res) => {
+  try {
+    console.log('[API] GET /api/faculty');
+    const faculty = await Faculty.find().sort({ createdAt: -1 });
+    res.json(faculty);
+  } catch (error) {
+    console.error('Error fetching faculty:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// GET /api/faculty/:id - Get single faculty
+app.get('/api/faculty/:id', async (req, res) => {
+  try {
+    const faculty = await Faculty.findOne({ facultyid: req.params.id });
+    if (faculty) {
+      res.json(faculty);
+    } else {
+      res.status(404).json({ message: 'Faculty not found' });
+    }
+  } catch (error) {
+    console.error('Error fetching faculty:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// POST /api/faculty - Create new faculty
+app.post('/api/faculty', async (req, res) => {
+  try {
+    console.log('[API] POST /api/faculty:', req.body);
+    
+    // Validation
+    const { facultyid, fullname, email, password, birthdate, program, position } = req.body;
+    
+    if (!facultyid || !fullname || !email || !password || !birthdate || !program || !position) {
+      return res.status(400).json({ 
+        message: 'All fields are required: facultyid, fullname, email, password, birthdate, program, position' 
+      });
+    }
+    
+    // Check duplicate faculty ID
+    const existingFaculty = await Faculty.findOne({ facultyid });
+    if (existingFaculty) {
+      return res.status(400).json({ message: `Faculty ID "${facultyid}" already exists` });
+    }
+    
+    // Check duplicate email
+    const existingEmail = await Faculty.findOne({ email: email.toLowerCase() });
+    if (existingEmail) {
+      return res.status(400).json({ message: `Email "${email}" already exists` });
+    }
+    
+    const newFaculty = new Faculty({
+      facultyid,
+      fullname,
+      email: email.toLowerCase(),
+      password,
+      birthdate: new Date(birthdate),
+      program,
+      position
+    });
+    
+    await newFaculty.save();
+    res.status(201).json(newFaculty);
+  } catch (error) {
+    console.error('Error creating faculty:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// PUT /api/faculty/:id - Update faculty
+app.put('/api/faculty/:id', async (req, res) => {
+  try {
+    const facultyId = req.params.id;
+    console.log(`[API] PUT /api/faculty/${facultyId}:`, req.body);
+    
+    // Check if trying to change email to duplicate
+    if (req.body.email) {
+      const existingEmail = await Faculty.findOne({ 
+        email: req.body.email.toLowerCase(),
+        $or: [
+          { facultyid: { $ne: facultyId } },
+          { _id: { $ne: facultyId } }
+        ]
+      });
+      if (existingEmail) {
+        return res.status(400).json({ message: `Email "${req.body.email}" already exists` });
+      }
+    }
+    
+    // Prepare update data
+    const updateData = { ...req.body };
+    if (updateData.email) {
+      updateData.email = updateData.email.toLowerCase();
+    }
+    if (updateData.birthdate) {
+      updateData.birthdate = new Date(updateData.birthdate);
+    }
+    updateData.updatedAt = new Date();
+    
+    // Try finding by facultyid first, then by MongoDB _id
+    let updatedFaculty = await Faculty.findOneAndUpdate(
+      { facultyid: facultyId },
+      updateData,
+      { returnDocument: 'after' }
+    );
+    
+    // If not found by facultyid, try by _id
+    if (!updatedFaculty) {
+      try {
+        updatedFaculty = await Faculty.findByIdAndUpdate(
+          facultyId,
+          updateData,
+          { new: true }
+        );
+      } catch (e) {
+        // MongoDB ObjectId parsing error
+        console.log(`[API] Could not find faculty by _id: ${facultyId}`);
+      }
+    }
+    
+    if (updatedFaculty) {
+      console.log(`[API] ✓ Faculty updated:`, updatedFaculty._id);
+      res.json(updatedFaculty);
+    } else {
+      console.error(`[API] Faculty not found with id: ${facultyId}`);
+      res.status(404).json({ message: 'Faculty not found' });
+    }
+  } catch (error) {
+    console.error('Error updating faculty:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// DELETE /api/faculty/:id - Delete faculty
+app.delete('/api/faculty/:id', async (req, res) => {
+  try {
+    const facultyId = req.params.id;
+    console.log(`[API] DELETE /api/faculty/${facultyId}`);
+    
+    const result = await Faculty.findOneAndDelete({ facultyid: facultyId });
+    
+    if (result) {
+      res.json({ message: 'Faculty deleted successfully' });
+    } else {
+      res.status(404).json({ message: 'Faculty not found' });
+    }
+  } catch (error) {
+    console.error('Error deleting faculty:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

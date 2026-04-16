@@ -16,6 +16,10 @@ const eventSchema = new mongoose.Schema({
     type: [String],
     default: []
   },
+  pendingRequests: {
+    type: [String],
+    default: []
+  },
   maxParticipants: {
     type: Number,
     default: 50

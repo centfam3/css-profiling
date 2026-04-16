@@ -7,7 +7,7 @@ const studentNavItems = [
   {
     section: 'Main',
     items: [
-      { label: 'Dashboard Home', icon: <FaHome />, to: '/student-dashboard' },
+      { label: 'Home', icon: <FaHome />, to: '/student-dashboard' },
     ],
   },
   {
@@ -17,19 +17,11 @@ const studentNavItems = [
         label: 'My Achievements',
         icon: <FaTrophy />,
         to: '/student-dashboard/achievements',
-        subItems: [
-          { label: 'Academic Achievements', icon: <FaGraduationCap />, to: '/student-dashboard/achievements-academic' },
-          { label: 'Sports Achievements', icon: <FaRunning />, to: '/student-dashboard/achievements-sports' },
-        ],
       },
       {
         label: 'Event Participation',
         icon: <FaCalendarAlt />,
         to: '/student-dashboard/events',
-        subItems: [
-          { label: 'Available Events', icon: null, to: '/student-dashboard/events-available' },
-          { label: 'Assigned Events', icon: null, to: '/student-dashboard/events-assigned' },
-        ],
       },
     ],
   },

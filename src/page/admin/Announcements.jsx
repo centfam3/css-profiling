@@ -40,22 +40,27 @@ export default function Announcements() {
     });
   }, [announcements, searchTerm, filterCategory]);
 
-  const handleSave = async (savedAnn) => {
+  const handleSave = async (savedAnn, isEditing) => {
     try {
-      console.log('Attempting to save announcement:', savedAnn);
-      if (editingAnnouncement) {
-        if (!savedAnn.id) {
+      console.log('Attempting to save announcement:', savedAnn, 'isEditing:', isEditing);
+      if (isEditing) {
+        // Use either 'id' or '_id' field for the query
+        const announcementId = savedAnn.id || savedAnn._id;
+        if (!announcementId) {
           throw new Error('Announcement ID is missing for update');
         }
         // Update existing announcement
-        await axios.put(`http://localhost:5000/api/announcements/${savedAnn.id}`, savedAnn);
+        console.log(`Updating announcement: ${announcementId}`);
+        await axios.put(`http://localhost:5000/api/announcements/${announcementId}`, savedAnn);
       } else {
         // Create new announcement
+        console.log('Creating new announcement');
         await axios.post('http://localhost:5000/api/announcements', savedAnn);
       }
       await fetchAnnouncements(); // Refresh the list
       setIsFormOpen(false);
       setEditingAnnouncement(null);
+      alert('Announcement saved successfully!');
     } catch (error) {
       console.error('Error saving announcement:', error.response?.data || error.message);
       const errorMessage = error.response?.data?.message || error.message;
@@ -119,8 +124,11 @@ export default function Announcements() {
 
       {/* Announcements List */}
       <div className="space-y-4">
-        {filteredAnnouncements.map(ann => (
-          <div key={ann.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md hover:border-indigo-100 transition-all group">
+        {filteredAnnouncements.map(ann => {
+          // Ensure announcement has an id property (use _id as fallback)
+          const annId = ann.id || ann._id;
+          return (
+          <div key={annId} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md hover:border-indigo-100 transition-all group">
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
               <div className="flex items-start gap-5">
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm ${getCategoryStyles(ann.category).split('icon-bg-')[0]} ${getCategoryStyles(ann.category).split('icon-bg-')[1]}`}>
@@ -160,7 +168,8 @@ export default function Announcements() {
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
 
         {filteredAnnouncements.length === 0 && (
           <div className="p-20 text-center bg-white rounded-2xl shadow-sm border border-gray-100">
@@ -174,15 +183,17 @@ export default function Announcements() {
       </div>
 
       <AnnouncementFormModal 
+        key={editingAnnouncement?.id || editingAnnouncement?._id || 'new'}
         isOpen={isFormOpen} 
         onClose={() => { setIsFormOpen(false); setEditingAnnouncement(null); }} 
         onSave={handleSave}
         announcement={editingAnnouncement}
       />
       <DeleteConfirmModal 
+        key={deletingAnnouncement?.id || deletingAnnouncement?._id || 'delete-modal'}
         isOpen={!!deletingAnnouncement} 
         onClose={() => setDeletingAnnouncement(null)} 
-        onConfirm={() => handleDelete(deletingAnnouncement.id)}
+        onConfirm={() => handleDelete(deletingAnnouncement.id || deletingAnnouncement._id)}
         itemName={deletingAnnouncement?.title}
       />
     </div>

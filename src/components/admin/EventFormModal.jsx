@@ -18,13 +18,13 @@ export default function EventFormModal({ isOpen, onClose, onSave, event }) {
   useEffect(() => {
     if (event) {
       setFormData({
-        name: event.name || '',
+        name: event.name || event.title || '',
         category: event.category || 'Academic',
         date: event.date || '',
         time: event.time || '',
         endDate: event.endDate || event.date || '',
         endTime: event.endTime || event.time || '',
-        venue: event.venue || '',
+        venue: event.venue || event.location || '',
         description: event.description || '',
         maxParticipants: event.maxParticipants || 50,
         status: event.status || 'Active',
@@ -55,11 +55,19 @@ export default function EventFormModal({ isOpen, onClose, onSave, event }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Prepare event data
-    const eventData = event ? { ...event, ...formData } : { 
-      ...formData, 
-      id: `EVT${Date.now()}`, // Use timestamp for unique ID
-      participants: [] 
+    // Prepare event data - preserve all original fields and merge with form changes
+    const eventData = event ? { 
+      ...event,  // Keep all original fields (id, participants, _id, etc)
+      ...formData,  // Override with edited fields
+      title: formData.name,  // Ensure 'title' field is set for Reports
+      location: formData.venue  // Ensure 'location' field is set
+    } : { 
+      ...formData,
+      title: formData.name,  // For new events
+      location: formData.venue,
+      id: `EVT${Date.now()}`,
+      participants: [],
+      pendingRequests: []
     };
     
     onSave(eventData);

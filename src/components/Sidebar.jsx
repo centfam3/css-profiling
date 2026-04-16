@@ -4,7 +4,23 @@ import { FaUsers, FaCalendarAlt, FaClipboardList, FaEye, FaBullhorn, FaBell } fr
 import { MdLogout, MdDashboard, MdPeople, MdMenuBook, MdCalendarToday, MdBarChart, MdCheckCircle, MdAssignment, MdChat, MdAccountCircle, MdSettings } from 'react-icons/md'
 import { HiMenuAlt2 } from 'react-icons/hi'
 
-const navItems = [
+const adminNavItems = [
+  {
+    section: 'Main',
+    items: [
+      { label: 'Dashboard Overview', icon: <MdDashboard />, to: '/dashboard' },
+      { label: 'Student Management', icon: <FaUsers />, to: '/dashboard/students' },
+      { label: 'Faculty Management', icon: <MdPeople />, to: '/dashboard/faculty' },
+      { label: 'Event Management', icon: <FaCalendarAlt />, to: '/dashboard/events' },
+      { label: 'Event Assignment', icon: <FaClipboardList />, to: '/dashboard/assignment' },
+      { label: 'Event Handler View', icon: <FaEye />, to: '/dashboard/handler-view' },
+      { label: 'Announcements', icon: <FaBullhorn />, to: '/dashboard/announcements' },
+      { label: 'Reports', icon: <MdBarChart />, to: '/dashboard/reports' },
+    ],
+  },
+];
+
+const facultyAdminNavItems = [
   {
     section: 'Main',
     items: [
@@ -15,9 +31,10 @@ const navItems = [
       { label: 'Event Handler View', icon: <FaEye />, to: '/dashboard/handler-view' },
       { label: 'Announcements', icon: <FaBullhorn />, to: '/dashboard/announcements' },
       { label: 'Reports', icon: <MdBarChart />, to: '/dashboard/reports' },
+      { label: 'My Profile', icon: <MdAccountCircle />, to: '/dashboard/profile' },
     ],
   },
-]
+];
 
 export default function Sidebar({ isCollapsed: externalIsCollapsed, onToggle, activePage, onLogout, user }) {
   const [internalCollapsed, setInternalCollapsed] = useState(false)
@@ -36,6 +53,9 @@ export default function Sidebar({ isCollapsed: externalIsCollapsed, onToggle, ac
     }
   }
 
+  const isAdmin = user?.role === 'admin';
+  const navItems = isAdmin ? adminNavItems : facultyAdminNavItems;
+  
   return (
     <div className={`${isCollapsed ? 'w-20' : 'w-72'} bg-white border-r border-orange-100 flex flex-col transition-all duration-500 ease-in-out overflow-hidden shadow-[4px_0_24px_rgba(251,146,60,0.05)] z-30`}>
       {/* Header */}
@@ -45,8 +65,8 @@ export default function Sidebar({ isCollapsed: externalIsCollapsed, onToggle, ac
             <FaClipboardList size={20} />
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-black text-slate-800 tracking-tight leading-none">Admin Panel</span>
-            <span className="text-[10px] text-orange-400 font-bold uppercase tracking-widest mt-1">Management </span>
+            <span className="text-sm font-black text-slate-800 tracking-tight leading-none">{isAdmin ? 'Admin' : 'Faculty'} Panel</span>
+            <span className="text-[10px] text-orange-400 font-bold uppercase tracking-widest mt-1">{isAdmin ? 'Management' : 'Dashboard'}</span>
           </div>
         </div>
         <button

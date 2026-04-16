@@ -10,6 +10,7 @@ import { FaUserGraduate, FaCalendarCheck, FaRunning, FaClock, FaLaptopCode, FaBo
 
 // Admin Pages
 import StudentManagement from './admin/StudentManagement'
+import FacultyManagement from './admin/FacultyManagement'
 import EventManagement from './admin/EventManagement'
 import EventAssignment from './admin/EventAssignment'
 import EventHandlerView from './admin/EventHandlerView'
@@ -17,6 +18,7 @@ import Announcements from './admin/Announcements'
 import NotificationsPage from './admin/NotificationsPage'
 import Reports from './admin/Reports'
 import StudentDetails from './admin/StudentDetails'
+import FacultyProfile from '../components/FacultyProfile'
 import UpcomingEvents from '../components/UpcomingEvents';
 
 const AccessDenied = () => (
@@ -25,11 +27,19 @@ const AccessDenied = () => (
   </div>
 );
 
-export default function FacultyDashboard({ user, onLogout }) {
+export default function FacultyDashboard({ user: initialUser, onLogout }) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [user, setUser] = useState(initialUser)
   const location = useLocation()
   const navigate = useNavigate()
+  
+  // Handle profile updates from FacultyProfile
+  const handleProfileUpdate = (updatedUser) => {
+    setUser(updatedUser);
+    // Also update sessionStorage so the user data persists across refreshes
+    sessionStorage.setItem('user', JSON.stringify(updatedUser));
+  }
 
   // Derive activePage from location
   const activePage = useMemo(() => {
@@ -42,6 +52,13 @@ export default function FacultyDashboard({ user, onLogout }) {
   const [students, setStudents] = useState([])
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
+
+  // Sync user state when initialUser changes
+  useEffect(() => {
+    if (initialUser) {
+      setUser(initialUser);
+    }
+  }, [initialUser]);
 
   // Fetch data from backend
   useEffect(() => {
@@ -76,12 +93,14 @@ export default function FacultyDashboard({ user, onLogout }) {
     switch (activePage) {
       case 'dashboard': return 'Dashboard Overview'
       case 'students': return 'Student Management'
+      case 'faculty': return 'Faculty Management'
       case 'events': return 'Event Management'
       case 'assignment': return 'Event Assignment'
       case 'handler-view': return 'Event Handler View'
       case 'announcements': return 'Announcements'
       case 'notifications': return 'Notifications Center'
       case 'reports': return 'Reports Summary'
+      case 'profile': return 'My Profile'
       default: return 'Faculty Dashboard'
     }
   }, [activePage])
@@ -231,6 +250,16 @@ export default function FacultyDashboard({ user, onLogout }) {
             <Routes>
               <Route path="/" element={renderDashboard()} />
               <Route path="/students" element={<StudentManagement searchQuery={searchQuery} />} />
+              <Route 
+                path="/faculty" 
+                element={
+                  user?.role === 'admin' ? (
+                    <FacultyManagement searchQuery={searchQuery} />
+                  ) : (
+                    <AccessDenied />
+                  )
+                } 
+              />
               <Route path="/events" element={<EventManagement searchQuery={searchQuery} />} />
               <Route path="/assignment" element={<EventAssignment searchQuery={searchQuery} />} />
               <Route path="/handler-view" element={<EventHandlerView searchQuery={searchQuery} />} />
@@ -239,13 +268,14 @@ export default function FacultyDashboard({ user, onLogout }) {
               <Route 
                 path="/reports" 
                 element={
-                  user?.role === 'admin' ? (
+                  user?.role === 'admin' || user?.role === 'faculty_admin' || user?.role === 'faculty' ? (
                     <Reports searchQuery={searchQuery} />
                   ) : (
                     <AccessDenied />
                   )
                 } 
               />
+              <Route path="/profile" element={<FacultyProfile user={user} onProfileUpdate={handleProfileUpdate} />} />
               <Route path="/users/:id" element={<StudentDetails />} />
               {/* Redirect any other dashboard sub-routes to main dashboard */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -1,26 +1,51 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { FaSearch, FaCalendarAlt, FaFileDownload, FaChartBar, FaUsers } from 'react-icons/fa'
+import { FaSearch, FaCalendarAlt, FaFileDownload, FaChartBar, FaUsers, FaSync } from 'react-icons/fa'
 
 export default function Reports() {
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [dateFilter, setDateFilter] = useState('')
+  const [lastUpdated, setLastUpdated] = useState(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   useEffect(() => {
     fetchReports()
+    
+    // Refetch when page becomes visible (user switches tabs/windows)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchReports()
+      }
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    // Auto-refresh every 5 seconds while page is visible
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchReports()
+      }
+    }, 5000)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      clearInterval(interval)
+    }
   }, [])
 
   const fetchReports = async () => {
     try {
-      setLoading(true)
+      setIsRefreshing(true)
       const response = await axios.get('http://localhost:5000/api/reports/summary')
       setReports(response.data)
+      setLastUpdated(new Date())
     } catch (error) {
       console.error('Error fetching reports:', error)
     } finally {
       setLoading(false)
+      setIsRefreshing(false)
     }
   }
 
@@ -67,7 +92,7 @@ export default function Reports() {
 
       {/* Filters */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-orange-100">
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex flex-col md:flex-row gap-4 items-end">
           <div className="flex-1 relative">
             <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
@@ -93,7 +118,20 @@ export default function Reports() {
           >
             Reset
           </button>
+          <button 
+            onClick={fetchReports}
+            disabled={isRefreshing}
+            className="px-6 py-2 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition-all flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <FaSync size={16} className={isRefreshing ? 'animate-spin' : ''} />
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
         </div>
+        {lastUpdated && (
+          <p className="text-xs text-slate-400 mt-3">
+            Last updated: {lastUpdated.toLocaleTimeString()}
+          </p>
+        )}
       </div>
 
       {/* Reports Table */}

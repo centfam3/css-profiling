@@ -59,7 +59,40 @@ export default function AnnouncementFormModal({ isOpen, onClose, onSave, announc
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(announcement ? { ...announcement, ...formData, date: formData.publishDate } : { ...formData, id: `ANN${Math.floor(Math.random() * 1000)}`, date: formData.publishDate });
+    
+    // Validate required fields
+    if (!formData.title.trim()) {
+      alert('Title is required');
+      return;
+    }
+    if (!formData.content.trim()) {
+      alert('Content is required');
+      return;
+    }
+    
+    const dataToSend = {
+      title: formData.title,
+      category: formData.category,
+      content: formData.content,
+      targetAudience: formData.targetAudience,
+      date: formData.publishDate,
+      status: formData.status,
+      priority: 'Normal',
+      author: 'System Administrator'
+    };
+    
+    // Include ID if editing (support both 'id' and '_id' fields)
+    if (announcement) {
+      if (announcement.id) {
+        dataToSend.id = announcement.id;
+      } else if (announcement._id) {
+        dataToSend._id = announcement._id;
+        dataToSend.id = announcement._id; // Also add as 'id' for API compatibility
+      }
+    }
+    
+    console.log('Submitting announcement:', dataToSend, 'isEditing:', !!announcement);
+    onSave(dataToSend, !!announcement);
     onClose();
   };
 

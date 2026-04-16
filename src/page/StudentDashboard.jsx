@@ -55,11 +55,7 @@ export default function StudentDashboard({ user, onLogout }) {
           <Routes>
             <Route path="/" element={<DashboardHome student={user} onViewProfile={() => setIsProfileModalOpen(true)} />} />
             <Route path="/achievements" element={<MyAchievements student={user} />} />
-            <Route path="/achievements-academic" element={<MyAchievements student={user} />} />
-            <Route path="/achievements-sports" element={<MyAchievements student={user} />} />
-            <Route path="/events" element={<EventParticipation student={user} />} />
-            <Route path="/events-available" element={<EventParticipation student={user} />} />
-            <Route path="/events-assigned" element={<EventParticipation student={user} />} />
+            <Route path="/events" element={<EventParticipation user={user} />} />
             <Route path="/announcements" element={<StudentAnnouncements student={user} />} />
             <Route path="*" element={<Navigate to="/student-dashboard" replace />} />
           </Routes>
@@ -79,36 +75,47 @@ export default function StudentDashboard({ user, onLogout }) {
 
 function DashboardHome({ student, onViewProfile }) {
   const [announcements, setAnnouncements] = useState([]);
+  const [joinedEvents, setJoinedEvents] = useState([]);
+  const [achievements, setAchievements] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchAnnouncements = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const [annResponse, eventsResponse] = await Promise.all([
+        const [annResponse, eventsResponse, studentResponse] = await Promise.all([
           axios.get('http://localhost:5000/api/announcements'),
-          axios.get('http://localhost:5000/api/events')
+          axios.get('http://localhost:5000/api/events'),
+          axios.get(`http://localhost:5000/api/students/${student?.id}`)
         ]);
 
-        const studentEvents = eventsResponse.data
-          .filter(event => event.participants && event.participants.includes(student?.id))
-          .map(event => event.name);
+        const allEvents = eventsResponse.data;
+        const myEvents = allEvents.filter(event => event.participants && event.participants.includes(student?.id));
+        setJoinedEvents(myEvents);
+        
+        // Set achievements from the student data
+        setAchievements(studentResponse.data.achievements || []);
 
-        const filtered = annResponse.data.filter(ann => {
+        const studentEventNames = myEvents.map(event => event.name);
+
+        const filteredAnn = annResponse.data.filter(ann => {
           const isPublished = ann.status === 'Published';
-          const isTargeted = ann.targetAudience === 'All Students' || studentEvents.includes(ann.targetAudience);
+          const isTargeted = ann.targetAudience === 'All Students' || studentEventNames.includes(ann.targetAudience);
           return isPublished && isTargeted;
-        }).reverse().slice(0, 3); // Only show top 3 latest announcements
+        }).reverse().slice(0, 3);
 
-        setAnnouncements(filtered);
+        setAnnouncements(filteredAnn);
       } catch (error) {
-        console.error('Error fetching announcements:', error);
+        console.error('Error fetching dashboard data:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchAnnouncements();
+    if (student?.id) {
+      fetchData();
+    }
   }, [student?.id]);
 
   // Get student's actual data, with fallback values
@@ -123,26 +130,26 @@ function DashboardHome({ student, onViewProfile }) {
       count: gpaData,
       icon: <FaGraduationCap className="text-2xl text-blue-500" />,
       color: 'bg-blue-50',
-      to: '/student-dashboard/achievements-academic',
+      to: '/student-dashboard/achievements',
     },
     {
-      title: 'Skills',
-      count: student?.skills?.length || 0,
+      title: 'Achievements',
+      count: achievements.length,
       icon: <FaTrophy className="text-2xl text-yellow-500" />,
       color: 'bg-yellow-50',
       to: '/student-dashboard/achievements',
     },
     {
-      title: 'Activities',
-      count: student?.nonAcademicActivities?.length || 0,
-      icon: <FaClock className="text-2xl text-green-500" />,
+      title: 'Joined Events',
+      count: joinedEvents.length,
+      icon: <FaCalendarAlt className="text-2xl text-green-500" />,
       color: 'bg-green-50',
       to: '/student-dashboard/events',
     },
     {
       title: 'Year Level',
       count: yearLevel,
-      icon: <FaCalendarAlt className="text-2xl text-purple-500" />,
+      icon: <FaUser className="text-2xl text-purple-500" />,
       color: 'bg-purple-50',
       to: '/student-dashboard/announcements',
     },
@@ -174,9 +181,112 @@ function DashboardHome({ student, onViewProfile }) {
           ))}
         </div>
 
-        {/* Upcoming Events Section */}
+        {/* Achievements Section */}
         <section className="mb-8">
-          <UpcomingEvents />
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold text-gray-900">Recent Achievements</h2>
+            <button 
+              onClick={() => navigate('/student-dashboard/achievements')}
+              className="text-indigo-600 text-sm font-semibold hover:underline"
+            >
+              View All Achievements
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {loading ? (
+              [1, 2].map(i => (
+                <div key={i} className="h-32 bg-gray-100 animate-pulse rounded-xl border border-gray-200"></div>
+              ))
+            ) : achievements.length > 0 ? (
+              achievements.slice(0, 3).map((achievement) => (
+                <div key={achievement.id} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${achievement.category === 'Academic' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'}`}>
+                      <FaTrophy />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-gray-900 line-clamp-1">{achievement.title}</h3>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{achievement.category}</p>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center mt-4">
+                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                      <FaCalendarAlt className="text-indigo-400" /> {achievement.date}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                      achievement.status === 'approved' ? 'bg-green-50 text-green-700 border-green-200' : 
+                      achievement.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 
+                      'bg-red-50 text-red-700 border-red-200'
+                    }`}>
+                      {achievement.status}
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full p-8 text-center bg-white rounded-2xl border border-dashed border-gray-200">
+                <p className="text-gray-400 font-medium">No achievements recorded yet.</p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Joined Events Section */}
+        <section className="mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold text-gray-900">Your Joined Events</h2>
+            <button 
+              onClick={() => navigate('/student-dashboard/events')}
+              className="text-indigo-600 text-sm font-semibold hover:underline"
+            >
+              View All Events
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {loading ? (
+              [1, 2, 3].map(i => (
+                <div key={i} className="h-32 bg-gray-100 animate-pulse rounded-xl border border-gray-200"></div>
+              ))
+            ) : joinedEvents.length > 0 ? (
+              joinedEvents.slice(0, 3).map((event) => (
+                <div key={event.id} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-green-100 text-green-700 border border-green-200">
+                        Joined
+                      </span>
+                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{event.category}</span>
+                    </div>
+                    <h3 className="font-bold text-gray-900 line-clamp-1">{event.name}</h3>
+                    <div className="space-y-1.5 mt-3">
+                      <p className="text-xs text-gray-500 flex items-center gap-2">
+                        <FaCalendarAlt className="text-indigo-400" /> {event.date}
+                      </p>
+                      <p className="text-xs text-gray-500 flex items-center gap-2">
+                        <FaMapPin className="text-indigo-400" /> {event.venue || event.location}
+                      </p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => navigate('/student-dashboard/events')}
+                    className="mt-4 w-full py-2 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors"
+                  >
+                    View Details
+                  </button>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full p-8 text-center bg-white rounded-2xl border border-dashed border-gray-200">
+                <p className="text-gray-400 font-medium">You haven't joined any events yet.</p>
+                <button 
+                  onClick={() => navigate('/student-dashboard/events')}
+                  className="mt-3 text-indigo-600 text-sm font-bold hover:underline"
+                >
+                  Browse Available Events
+                </button>
+              </div>
+            )}
+          </div>
         </section>
 
         {/* Latest Announcements Section */}

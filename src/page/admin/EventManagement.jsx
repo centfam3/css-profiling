@@ -3,6 +3,7 @@ import axios from 'axios';
 import { FaPlus, FaSearch, FaCalendarAlt, FaMapMarkerAlt, FaUsers, FaEdit, FaTrash, FaThList, FaThLarge } from 'react-icons/fa';
 import EventFormModal from '../../components/admin/EventFormModal';
 import DeleteConfirmModal from '../../components/admin/DeleteConfirmModal';
+import ParticipantsViewModal from '../../components/admin/ParticipantsViewModal';
 
 export default function EventManagement() {
   const [events, setEvents] = useState([]);
@@ -15,6 +16,7 @@ export default function EventManagement() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [deletingEvent, setDeletingEvent] = useState(null);
+  const [viewingParticipants, setViewingParticipants] = useState(null);
 
   // Fetch events from backend
   useEffect(() => {
@@ -33,8 +35,10 @@ export default function EventManagement() {
 
   const filteredEvents = useMemo(() => {
     return events.filter(event => {
-      const matchesSearch = event.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            event.venue.toLowerCase().includes(searchTerm.toLowerCase());
+      const eventName = (event.name || event.title || '').toLowerCase();
+      const eventVenue = (event.venue || event.location || '').toLowerCase();
+      const matchesSearch = eventName.includes(searchTerm.toLowerCase()) || 
+                            eventVenue.includes(searchTerm.toLowerCase());
       const matchesCategory = filterCategory === 'All' || event.category === filterCategory;
       return matchesSearch && matchesCategory;
     });
@@ -155,7 +159,7 @@ export default function EventManagement() {
                   </button>
                 </div>
               </div>
-              <h3 className="text-lg font-bold text-gray-800 mb-4 group-hover:text-indigo-600 transition-colors">{event.name}</h3>
+              <h3 className="text-lg font-bold text-gray-800 mb-4 group-hover:text-indigo-600 transition-colors">{event.name || event.title}</h3>
               <div className="space-y-3 mb-6">
                 <div className="flex items-center gap-3 text-gray-500">
                   <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400">
@@ -170,7 +174,7 @@ export default function EventManagement() {
                   <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400">
                     <FaMapMarkerAlt size={14} />
                   </div>
-                  <p className="text-xs font-semibold text-gray-600">{event.venue}</p>
+                  <p className="text-xs font-semibold text-gray-600">{event.venue || event.location}</p>
                 </div>
                 <div className="flex items-center gap-3 text-gray-500">
                   <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400">
@@ -181,7 +185,9 @@ export default function EventManagement() {
                   </p>
                 </div>
               </div>
-              <button className="w-full py-2.5 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-sm hover:bg-indigo-600 hover:text-white transition-all">
+              <button 
+                onClick={() => setViewingParticipants(event)}
+                className="w-full py-2.5 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-sm hover:bg-indigo-600 hover:text-white transition-all">
                 View Participants
               </button>
             </div>
@@ -196,6 +202,7 @@ export default function EventManagement() {
                 <th className="px-6 py-5">Category</th>
                 <th className="px-6 py-5">Schedule</th>
                 <th className="px-6 py-5">Participants</th>
+                <th className="px-6 py-5 text-center">Status</th>
                 <th className="px-6 py-5 text-right">Actions</th>
               </tr>
             </thead>
@@ -204,9 +211,9 @@ export default function EventManagement() {
                 <tr key={event.id} className="hover:bg-indigo-50/20 transition-colors group">
                   <td className="px-6 py-5">
                     <div>
-                      <p className="text-sm font-bold text-gray-800">{event.name}</p>
+                      <p className="text-sm font-bold text-gray-800">{event.name || event.title}</p>
                       <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-                        <FaMapMarkerAlt className="text-[10px]" /> {event.venue}
+                        <FaMapMarkerAlt className="text-[10px]" /> {event.venue || event.location}
                       </p>
                     </div>
                   </td>
@@ -229,6 +236,15 @@ export default function EventManagement() {
                       </div>
                       <span className="text-xs font-bold text-gray-600">{event.participants?.length || 0}</span>
                     </div>
+                  </td>
+                  <td className="px-6 py-5 text-center">
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                      (event.participants?.length || 0) > 0 
+                        ? 'bg-green-100 text-green-600' 
+                        : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      {(event.participants?.length || 0) > 0 ? 'Active' : 'Empty'}
+                    </span>
                   </td>
                   <td className="px-6 py-5 text-right">
                     <div className="flex items-center justify-end gap-2">
@@ -275,6 +291,11 @@ export default function EventManagement() {
         onClose={() => setDeletingEvent(null)} 
         onConfirm={() => handleDelete(deletingEvent.id)}
         itemName={deletingEvent?.name}
+      />
+      <ParticipantsViewModal 
+        isOpen={!!viewingParticipants}
+        onClose={() => setViewingParticipants(null)}
+        event={viewingParticipants}
       />
     </div>
   );

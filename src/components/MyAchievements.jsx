@@ -1,278 +1,184 @@
-import { useState } from 'react'
-import { FaPlus } from 'react-icons/fa'
-
-const mockAchievements = {
-  academic: [
-    {
-      id: 1,
-      title: 'Dean\'s List Recognition',
-      date: 'Feb 2024',
-      description: 'Achieved 3.8 GPA in Fall semester 2023',
-      status: 'approved',
-      category: 'Academic',
-    },
-    {
-      id: 2,
-      title: 'Programming Competition Winner',
-      date: 'Jan 2024',
-      description: 'Won 1st place in Inter-College Code Sprint',
-      status: 'approved',
-      category: 'Academic',
-    },
-    {
-      id: 3,
-      title: 'Research Paper Published',
-      date: 'Mar 2024',
-      description: 'Published paper on AI in Education',
-      status: 'pending',
-      category: 'Academic',
-    },
-    {
-      id: 4,
-      title: 'Outstanding Thesis Defense',
-      date: 'Apr 2024',
-      description: 'Capstone project approved with excellent remarks',
-      status: 'pending',
-      category: 'Academic',
-    },
-  ],
-  sports: [
-    {
-      id: 5,
-      title: 'Basketball Championship',
-      date: 'Dec 2023',
-      description: 'Participated as team captain in SWIC Games 2023',
-      status: 'approved',
-      category: 'Sports',
-    },
-    {
-      id: 6,
-      title: 'UAAP Badminton Runner-up',
-      date: 'Nov 2023',
-      description: 'Men\'s doubles – 2nd place finish',
-      status: 'approved',
-      category: 'Sports',
-    },
-    {
-      id: 7,
-      title: 'Track and Field Record',
-      date: 'Feb 2024',
-      description: 'New school record in 400m sprint',
-      status: 'rejected',
-      category: 'Sports',
-    },
-  ],
-}
+import React, { useState, useEffect } from 'react'
+import axios from 'axios'
+import { FaTrophy, FaCalendarAlt, FaAward, FaHourglassHalf, FaCheckCircle, FaTimesCircle, FaRunning, FaBullhorn } from 'react-icons/fa'
 
 export function AchievementCard({ achievement }) {
-  const statusColor = {
-    approved: { bg: 'bg-green-50', text: 'text-green-700', badge: 'bg-green-200' },
-    pending: { bg: 'bg-yellow-50', text: 'text-yellow-700', badge: 'bg-yellow-200' },
-    rejected: { bg: 'bg-red-50', text: 'text-red-700', badge: 'bg-red-200' },
+  const getStatusInfo = (status) => {
+    switch (status) {
+      case 'approved':
+        return { 
+          bg: 'bg-green-50', 
+          text: 'text-green-700', 
+          border: 'border-green-200',
+          icon: <FaCheckCircle className="text-green-500" />
+        };
+      case 'pending':
+        return { 
+          bg: 'bg-yellow-50', 
+          text: 'text-yellow-700', 
+          border: 'border-yellow-200',
+          icon: <FaHourglassHalf className="text-yellow-500" />
+        };
+      case 'rejected':
+        return { 
+          bg: 'bg-red-50', 
+          text: 'text-red-700', 
+          border: 'border-red-200',
+          icon: <FaTimesCircle className="text-red-500" />
+        };
+      default:
+        return { 
+          bg: 'bg-gray-50', 
+          text: 'text-gray-700', 
+          border: 'border-gray-200',
+          icon: <FaAward className="text-gray-400" />
+        };
+    }
   }
 
-  const color = statusColor[achievement.status] || statusColor.pending
+  const info = getStatusInfo(achievement.status)
 
   return (
-    <div className={`${color.bg} border-l-4 border-l-${achievement.status === 'approved' ? 'green' : achievement.status === 'pending' ? 'yellow' : 'red'}-500 p-5 rounded-lg hover:shadow-md transition`}>
-      <div className="flex justify-between items-start mb-2">
-        <h3 className="font-semibold text-gray-800 text-lg">{achievement.title}</h3>
-        <span className={`${color.badge} ${color.text} px-3 py-1 rounded-full text-xs font-semibold capitalize`}>
-          {achievement.status}
-        </span>
+    <div className={`${info.bg} border ${info.border} p-6 rounded-2xl hover:shadow-lg transition-all duration-300 group`}>
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex items-center gap-3">
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl shadow-sm ${
+            achievement.category === 'Academic' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'
+          }`}>
+            <FaTrophy />
+          </div>
+          <div>
+            <h3 className="font-bold text-gray-900 text-lg group-hover:text-orange-600 transition-colors">{achievement.title}</h3>
+            <div className="flex items-center gap-2 mt-1">
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-widest flex items-center gap-1 ${info.bg} ${info.text} ${info.border}`}>
+                {info.icon} {achievement.status}
+              </span>
+              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{achievement.category}</span>
+            </div>
+          </div>
+        </div>
       </div>
-      <p className="text-sm text-gray-600 mb-3">{achievement.description}</p>
-      <p className="text-xs text-gray-500">{achievement.date}</p>
+      {achievement.description && (
+        <p className="text-sm text-gray-600 mb-4 leading-relaxed">{achievement.description}</p>
+      )}
+      <div className="flex items-center gap-4 pt-4 border-t border-gray-100/50">
+        <p className="text-xs text-gray-400 flex items-center gap-1.5 font-medium">
+          <FaCalendarAlt className="text-orange-400" /> {achievement.date}
+        </p>
+      </div>
     </div>
   )
 }
 
-export function AchievementForm({ onSubmit, onClose }) {
-  const [formData, setFormData] = useState({
-    title: '',
-    category: 'Academic',
-    date: '',
-    description: '',
-    proof: null,
-  })
+export default function MyAchievements({ student: initialStudent }) {
+  const [activeTab, setActiveTab] = useState('Academic')
+  const [student, setStudent] = useState(initialStudent)
+  const [loading, setLoading] = useState(true)
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    onSubmit(formData)
-    setFormData({ title: '', category: 'Academic', date: '', description: '', proof: null })
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">Achievement Title</label>
-        <input
-          type="text"
-          value={formData.title}
-          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-          placeholder="e.g., Dean's List"
-          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-          required
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
-          <select
-            value={formData.category}
-            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-          >
-            <option value="Academic">Academic</option>
-            <option value="Sports">Sports</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Date</label>
-          <input
-            type="date"
-            value={formData.date}
-            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-            required
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
-        <textarea
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          placeholder="Describe your achievement..."
-          rows="4"
-          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">Upload Proof/Certificate</label>
-        <input
-          type="file"
-          onChange={(e) => setFormData({ ...formData, proof: e.target.files?.[0] })}
-          accept=".pdf,.jpg,.jpeg,.png"
-          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-        />
-      </div>
-
-      <div className="flex gap-3 pt-4">
-        <button
-          type="submit"
-          className="flex-1 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-orange-700 transition"
-        >
-          Submit Achievement
-        </button>
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition"
-        >
-          Cancel
-        </button>
-      </div>
-    </form>
-  )
-}
-
-export default function MyAchievements() {
-  const [activeTab, setActiveTab] = useState('academic')
-  const [isFormOpen, setIsFormOpen] = useState(false)
-  const [achievements, setAchievements] = useState(mockAchievements)
-
-  const handleAddAchievement = (formData) => {
-    const newAchievement = {
-      id: Math.max(...Object.values(achievements).flat().map((a) => a.id), 0) + 1,
-      ...formData,
-      status: 'pending',
+  useEffect(() => {
+    const fetchLatestStudentData = async () => {
+      if (!initialStudent?.id) return;
+      
+      try {
+        setLoading(true)
+        console.log('📖 Fetching achievements for:', initialStudent.id)
+        const response = await axios.get(`http://localhost:5000/api/students/${initialStudent.id}`)
+        console.log('✅ Received student data:', response.data)
+        console.log('   Achievements:', response.data.achievements)
+        console.log('   Achievements type:', typeof response.data.achievements)
+        console.log('   Achievements length:', response.data.achievements?.length)
+        setStudent(response.data)
+      } catch (error) {
+        console.error('Error fetching student achievements:', error)
+      } finally {
+        setLoading(false)
+      }
     }
-    const category = formData.category.toLowerCase()
-    setAchievements({
-      ...achievements,
-      [category]: [...achievements[category], newAchievement],
-    })
-    setIsFormOpen(false)
+
+    fetchLatestStudentData()
+  }, [initialStudent?.id])
+
+  const achievements = student?.achievements || []
+  const filteredAchievements = achievements.filter(a => a.category === activeTab)
+
+  console.log('🎓 MyAchievements - All achievements:', achievements)
+  console.log('🎓 MyAchievements - Filtered achievements:', filteredAchievements)
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <div className="animate-spin w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full mb-4"></div>
+        <p className="text-gray-500 font-medium tracking-wide">Loading your achievements...</p>
+      </div>
+    )
   }
 
-  const displayAchievements = activeTab === 'academic' ? achievements.academic : achievements.sports
-
   return (
-    <div>
-      <div className="mb-6 flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">My Achievements</h1>
-        <button
-          onClick={() => setIsFormOpen(true)}
-          className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-orange-700 transition"
-        >
-          <FaPlus /> Add Achievement
-        </button>
+    <div className="animate-fadeIn">
+      <div className="mb-8 flex justify-between items-end">
+        <div>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-2">My Achievements</h1>
+          <p className="text-slate-500 font-medium">Your recognized academic and sports milestones</p>
+        </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-4 mb-6">
+      <div className="flex gap-3 mb-8 bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm w-fit">
         <button
-          onClick={() => setActiveTab('academic')}
-          className={`px-6 py-2 rounded-lg font-semibold transition ${
-            activeTab === 'academic'
-              ? 'bg-orange-500 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          onClick={() => setActiveTab('Academic')}
+          className={`px-8 py-3 rounded-xl font-bold text-sm transition-all duration-300 flex items-center gap-2 ${
+            activeTab === 'Academic'
+              ? 'bg-orange-500 text-white shadow-lg shadow-orange-100'
+              : 'text-slate-500 hover:bg-orange-50 hover:text-orange-600'
           }`}
         >
-          Academic
+          <FaAward className={activeTab === 'Academic' ? 'text-white' : 'text-slate-400'} />
+          Academic Achievements
         </button>
         <button
-          onClick={() => setActiveTab('sports')}
-          className={`px-6 py-2 rounded-lg font-semibold transition ${
-            activeTab === 'sports'
-              ? 'bg-orange-500 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          onClick={() => setActiveTab('Sports')}
+          className={`px-8 py-3 rounded-xl font-bold text-sm transition-all duration-300 flex items-center gap-2 ${
+            activeTab === 'Sports'
+              ? 'bg-orange-500 text-white shadow-lg shadow-orange-100'
+              : 'text-slate-500 hover:bg-orange-50 hover:text-orange-600'
           }`}
         >
-          Sports
+          <FaRunning className={activeTab === 'Sports' ? 'text-white' : 'text-slate-400'} />
+          Sports Achievements
         </button>
       </div>
 
       {/* Achievement List */}
-      <div className="space-y-4">
-        {displayAchievements.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 rounded-xl">
-            <p className="text-gray-500 text-lg">No achievements yet</p>
-            <button
-              onClick={() => setIsFormOpen(true)}
-              className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition"
-            >
-              Add Your First Achievement
-            </button>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {filteredAchievements.length === 0 ? (
+          <div className="col-span-full py-20 bg-white rounded-3xl border border-dashed border-slate-200 text-center shadow-sm">
+            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+              <FaTrophy className="text-3xl text-slate-300" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-800 mb-2">No {activeTab} Achievements</h3>
+            <p className="text-slate-400 max-w-sm mx-auto font-medium leading-relaxed px-6">
+              Your recognized milestones will appear here once added by the faculty or administration.
+            </p>
           </div>
         ) : (
-          displayAchievements.map((achievement) => (
+          filteredAchievements.map((achievement) => (
             <AchievementCard key={achievement.id} achievement={achievement} />
           ))
         )}
       </div>
 
-      {/* Note */}
-      <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <p className="text-sm text-blue-700">
-          <span className="font-semibold">📋 Note:</span> Submitted achievements are reviewed by the Admin. You'll be notified once they're approved or rejected.
-        </p>
-      </div>
-
-      {/* Modal */}
-      {isFormOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Add Achievement</h2>
-            <AchievementForm onSubmit={handleAddAchievement} onClose={() => setIsFormOpen(false)} />
-          </div>
+      {/* Info Banner */}
+      <div className="mt-12 p-6 bg-indigo-50/50 border border-indigo-100 rounded-3xl flex items-start gap-4">
+        <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+          <FaBullhorn />
         </div>
-      )}
+        <div>
+          <h4 className="font-bold text-indigo-900 mb-1">Recognition Notice</h4>
+          <p className="text-sm text-indigo-700 font-medium leading-relaxed">
+            Achievements are managed by the school administration and faculty. If you have a milestone that hasn't been recorded, please visit the faculty office with your supporting documents.
+          </p>
+        </div>
+      </div>
     </div>
   )
 }

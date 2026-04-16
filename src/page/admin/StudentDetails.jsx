@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { FaArrowLeft, FaTrophy, FaCalendarAlt, FaMapMarkerAlt, FaUser, FaPhone, FaEnvelope, FaExclamationTriangle, FaClipboardList, FaCheckCircle, FaLaptopCode, FaBookOpen } from 'react-icons/fa';
+import { FaArrowLeft, FaTrophy, FaCalendarAlt, FaMapMarkerAlt, FaUser, FaPhone, FaEnvelope, FaExclamationTriangle, FaClipboardList, FaCheckCircle, FaLaptopCode, FaBookOpen, FaPlus, FaTrash, FaTimes } from 'react-icons/fa';
 
 export default function StudentDetails() {
   const { id } = useParams();
@@ -9,6 +9,9 @@ export default function StudentDetails() {
   const [student, setStudent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isAchievementModalOpen, setIsAchievementModalOpen] = useState(false);
+  const [activeAchievementTab, setActiveAchievementTab] = useState('Academic');
+  const [addingAchievement, setAddingAchievement] = useState(false);
 
   useEffect(() => {
     const fetchStudent = async () => {
@@ -27,6 +30,55 @@ export default function StudentDetails() {
     fetchStudent();
   }, [id]);
 
+  const handleAddAchievement = async (formData) => {
+    try {
+      setAddingAchievement(true);
+      console.log('📝 Submitting achievement:', formData);
+      const response = await axios.post(`http://localhost:5000/api/students/${id}/achievements`, formData);
+      
+      console.log('✅ Response received:', response.data);
+      console.log('   Achievements in response:', response.data.achievements);
+      console.log('   Response keys:', Object.keys(response.data));
+      
+      setStudent(response.data);
+      setIsAchievementModalOpen(false);
+      
+      // Manually refetch to ensure fresh data
+      setTimeout(async () => {
+        try {
+          const freshResponse = await axios.get(`http://localhost:5000/api/students/${id}`);
+          console.log('🔄 Refetched student:', freshResponse.data);
+          console.log('   Achievements:', freshResponse.data.achievements);
+          setStudent(freshResponse.data);
+        } catch (err) {
+          console.error('Error refetching:', err);
+        }
+      }, 500);
+      
+      alert('Achievement added successfully!');
+    } catch (error) {
+      console.error('Error adding achievement:', error);
+      alert('Error adding achievement: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setAddingAchievement(false);
+    }
+  };
+
+  const handleDeleteAchievement = async (achievementId) => {
+    if (!confirm('Are you sure you want to delete this achievement?')) {
+      return;
+    }
+
+    try {
+      const response = await axios.delete(`http://localhost:5000/api/students/${id}/achievements/${achievementId}`);
+      setStudent(response.data);
+      alert('Achievement deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting achievement:', error);
+      alert('Error deleting achievement: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl shadow-sm border border-gray-100">
@@ -43,7 +95,7 @@ export default function StudentDetails() {
           <FaExclamationTriangle className="text-red-500 text-3xl" />
         </div>
         <h3 className="text-xl font-bold text-gray-800">{error || 'Student not found'}</h3>
-        <button 
+        <button
           onClick={() => navigate(-1)}
           className="mt-6 flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 mx-auto transition-all"
         >
@@ -52,6 +104,11 @@ export default function StudentDetails() {
       </div>
     );
   }
+
+  const studentAchievements = student.achievements || [];
+  const academicAchievements = studentAchievements.filter(a => a.category === 'Academic');
+  const sportsAchievements = studentAchievements.filter(a => a.category === 'Sports');
+  const displayedAchievements = activeAchievementTab === 'Academic' ? academicAchievements : sportsAchievements;
 
   const getSeverityColor = (severity) => {
     switch (severity) {
@@ -62,14 +119,32 @@ export default function StudentDetails() {
     }
   };
 
+  const getAchievementStatusColor = (status) => {
+    switch (status) {
+      case 'approved': return 'bg-green-100 text-green-700 border-green-200';
+      case 'pending': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      case 'rejected': return 'bg-red-100 text-red-700 border-red-200';
+      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+    }
+  };
+
   const sectionHeaderClasses = "text-xs font-black text-indigo-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2 mt-8 first:mt-0";
 
   return (
     <div className="animate-fadeIn space-y-6">
+      {/* Achievement Modal */}
+      {isAchievementModalOpen && (
+        <AchievementFormModal
+          onClose={() => setIsAchievementModalOpen(false)}
+          onSave={handleAddAchievement}
+          isSubmitting={addingAchievement}
+        />
+      )}
+
       {/* Header with Back Button */}
       <div className="bg-white px-8 py-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <button 
+          <button
             onClick={() => navigate(-1)}
             className="p-3 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all border border-gray-100"
             title="Back to List"
@@ -274,7 +349,7 @@ export default function StudentDetails() {
             <div className="flex flex-wrap gap-2.5">
               {student.skills?.map((skill, idx) => (
                 <span key={idx} className="px-4 py-2 bg-white text-indigo-600 rounded-xl text-xs font-bold border border-indigo-100 shadow-sm hover:border-indigo-300 transition-all cursor-default">
-                  {skill}
+                  {typeof skill === 'string' ? skill : skill.name || skill}
                 </span>
               ))}
               {(!student.skills || student.skills.length === 0) && (
@@ -283,6 +358,205 @@ export default function StudentDetails() {
             </div>
           </div>
         </section>
+
+        {/* Achievements Section */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className={sectionHeaderClasses}><span className="w-8 h-px bg-indigo-100"></span> Achievements</h3>
+            <button
+              onClick={() => setIsAchievementModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition shadow-md"
+            >
+              <FaPlus size={14} /> Add Achievement
+            </button>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex gap-3 mb-4">
+            <button
+              onClick={() => setActiveAchievementTab('Academic')}
+              className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${
+                activeAchievementTab === 'Academic'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Academic ({academicAchievements.length})
+            </button>
+            <button
+              onClick={() => setActiveAchievementTab('Sports')}
+              className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${
+                activeAchievementTab === 'Sports'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Sports ({sportsAchievements.length})
+            </button>
+          </div>
+
+          {/* Achievement List */}
+          <div className="space-y-3">
+            {displayedAchievements.length === 0 ? (
+              <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                <p className="text-sm text-gray-400 italic">No {activeAchievementTab.toLowerCase()} achievements recorded.</p>
+              </div>
+            ) : (
+              displayedAchievements.map((achievement) => (
+                <div key={achievement.id} className="flex items-start justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 hover:shadow-md transition">
+                  <div className="flex items-start gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                      achievement.category === 'Academic' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'
+                    }`}>
+                      <FaTrophy size={16} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="text-sm font-bold text-gray-800">{achievement.title}</h4>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${getAchievementStatusColor(achievement.status)}`}>
+                          {achievement.status}
+                        </span>
+                      </div>
+                      {achievement.description && (
+                        <p className="text-xs text-gray-600 mb-1">{achievement.description}</p>
+                      )}
+                      <p className="text-[10px] text-gray-400 font-medium">{achievement.date}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteAchievement(achievement.id)}
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                    title="Delete Achievement"
+                  >
+                    <FaTrash size={14} />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function AchievementFormModal({ onClose, onSave, isSubmitting }) {
+  const [formData, setFormData] = useState({
+    title: '',
+    category: 'Academic',
+    date: '',
+    description: '',
+    status: 'approved'
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!formData.title.trim()) {
+      alert('Please enter an achievement title');
+      return;
+    }
+    if (!formData.date) {
+      alert('Please select a date');
+      return;
+    }
+    onSave(formData);
+    // Reset form after submission
+    setFormData({
+      title: '',
+      category: 'Academic',
+      date: '',
+      description: '',
+      status: 'approved'
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-scaleIn">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-gray-800">Add Achievement</h2>
+          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition">
+            <FaTimes size={18} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Achievement Title</label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 outline-none transition"
+              placeholder="e.g., Dean's List Award"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Category</label>
+              <select
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 outline-none transition"
+              >
+                <option value="Academic">Academic</option>
+                <option value="Sports">Sports</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Status</label>
+              <select
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 outline-none transition"
+              >
+                <option value="approved">Approved</option>
+                <option value="pending">Pending</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Date</label>
+            <input
+              type="date"
+              value={formData.date}
+              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 outline-none transition"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Description</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              rows="3"
+              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 outline-none transition resize-none"
+              placeholder="Describe the achievement..."
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold text-sm hover:bg-gray-200 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition disabled:opacity-50"
+            >
+              {isSubmitting ? 'Adding...' : 'Add Achievement'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

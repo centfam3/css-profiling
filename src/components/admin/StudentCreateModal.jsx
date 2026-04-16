@@ -27,7 +27,7 @@ export default function StudentCreateModal({ isOpen, onClose, onSave }) {
       guardianContact: '',
       skills: [],
       hobbies: [],
-      achievements: { academic: [], sports: [] },
+      achievements: [],  // Changed from { academic: [], sports: [] } to simple array
       medicalInfo: '',
       assignedEvents: [],
       isProfileComplete: false,

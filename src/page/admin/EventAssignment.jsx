@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { FaSearch, FaCalendarAlt, FaMapMarkerAlt, FaUsers, FaPlus, FaTimes, FaExclamationTriangle, FaCheckCircle, FaFilter, FaLaptopCode, FaBookOpen } from 'react-icons/fa';
+import { FaSearch, FaCalendarAlt, FaMapMarkerAlt, FaUsers, FaPlus, FaTimes, FaExclamationTriangle, FaCheckCircle, FaFilter, FaLaptopCode, FaBookOpen, FaCheck, FaBan, FaHourglassHalf } from 'react-icons/fa';
 
 export default function EventAssignment() {
   const navigate = useNavigate();
@@ -9,11 +9,10 @@ export default function EventAssignment() {
   const [students, setStudents] = useState([]);
   const [selectedEventId, setSelectedEventId] = useState('');
   const [loading, setLoading] = useState(true);
-  
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSkill, setFilterSkill] = useState('');
 
-  // Fetch events and students from backend
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -35,30 +34,72 @@ export default function EventAssignment() {
     fetchData();
   }, []);
 
-  // Get current selected event
-  const selectedEvent = useMemo(() => 
-    events.find(e => e.id === selectedEventId), 
+  const selectedEvent = useMemo(() =>
+    events.find(e => e.id === selectedEventId),
     [events, selectedEventId]
   );
 
-  // Get assigned students for the selected event
-  const assignedStudents = useMemo(() => 
+  const assignedStudents = useMemo(() =>
     students.filter(s => selectedEvent?.participants.includes(s.id)),
     [students, selectedEvent]
   );
 
-  // Filter candidate students
+  const pendingRequests = useMemo(() =>
+    students.filter(s => selectedEvent?.pendingRequests?.includes(s.id)),
+    [students, selectedEvent]
+  );
+
   const candidateStudents = useMemo(() => {
     return students.filter(student => {
       const isAlreadyAssigned = selectedEvent?.participants.includes(student.id);
+      const hasPendingRequest = selectedEvent?.pendingRequests?.includes(student.id);
       const fullName = `${student.firstName} ${student.lastName}`.toLowerCase();
-      const matchesSearch = fullName.includes(searchTerm.toLowerCase()) || 
+      const matchesSearch = fullName.includes(searchTerm.toLowerCase()) ||
                             student.id.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesSkill = filterSkill === '' || student.skills?.some(s => s.name?.toLowerCase().includes(filterSkill.toLowerCase()) || s?.toLowerCase?.().includes(filterSkill.toLowerCase()));
-      
-      return !isAlreadyAssigned && matchesSearch && matchesSkill;
+
+      return !isAlreadyAssigned && !hasPendingRequest && matchesSearch && matchesSkill;
     });
   }, [students, selectedEvent, searchTerm, filterSkill]);
+
+  const handleApprove = async (studentId) => {
+    if (selectedEvent.participants.length >= selectedEvent.maxParticipants) {
+      alert("Maximum participants reached for this event!");
+      return;
+    }
+
+    try {
+      const response = await axios.post(`http://localhost:5000/api/events/${selectedEventId}/approve`, {
+        studentId: studentId
+      });
+
+      setEvents(prev => prev.map(e =>
+        e.id === selectedEventId ? response.data : e
+      ));
+    } catch (error) {
+      console.error('Error approving request:', error);
+      alert('Error approving request: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const handleReject = async (studentId) => {
+    if (!confirm('Are you sure you want to reject this request?')) {
+      return;
+    }
+
+    try {
+      const response = await axios.post(`http://localhost:5000/api/events/${selectedEventId}/reject`, {
+        studentId: studentId
+      });
+
+      setEvents(prev => prev.map(e =>
+        e.id === selectedEventId ? response.data : e
+      ));
+    } catch (error) {
+      console.error('Error rejecting request:', error);
+      alert('Error rejecting request: ' + (error.response?.data?.message || error.message));
+    }
+  };
 
   const handleAssign = async (student) => {
     if (selectedEvent.participants.length >= selectedEvent.maxParticipants) {
@@ -66,9 +107,8 @@ export default function EventAssignment() {
       return;
     }
 
-    // Check if student already has an event on the same date
-    const sameDateEvent = events.find(e => 
-      e.date === selectedEvent.date && 
+    const sameDateEvent = events.find(e =>
+      e.date === selectedEvent.date &&
       e.participants.includes(student.id)
     );
 
@@ -82,9 +122,8 @@ export default function EventAssignment() {
       const response = await axios.post(`http://localhost:5000/api/events/${selectedEventId}/register`, {
         studentId: student.id
       });
-      
-      // Update local state
-      setEvents(prev => prev.map(e => 
+
+      setEvents(prev => prev.map(e =>
         e.id === selectedEventId ? response.data : e
       ));
     } catch (error) {
@@ -98,9 +137,8 @@ export default function EventAssignment() {
       const response = await axios.post(`http://localhost:5000/api/events/${selectedEventId}/unregister`, {
         studentId: studentId
       });
-      
-      // Update local state
-      setEvents(prev => prev.map(e => 
+
+      setEvents(prev => prev.map(e =>
         e.id === selectedEventId ? response.data : e
       ));
     } catch (error) {
@@ -154,7 +192,7 @@ export default function EventAssignment() {
                   </p>
                 </div>
               </div>
-              
+
               <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
                 <div className="flex justify-between items-center mb-2">
                   <p className="text-[10px] font-bold text-indigo-400 uppercase">Capacity</p>
@@ -167,11 +205,18 @@ export default function EventAssignment() {
                   <span className="text-sm text-indigo-400 mb-1">/ {selectedEvent.maxParticipants} Participants</span>
                 </div>
                 <div className="w-full h-2 bg-indigo-100 rounded-full mt-3 overflow-hidden">
-                  <div 
+                  <div
                     className={`h-full transition-all duration-500 ${selectedEvent.participants.length >= selectedEvent.maxParticipants ? 'bg-red-500' : 'bg-indigo-600'}`}
                     style={{ width: `${(selectedEvent.participants.length / selectedEvent.maxParticipants) * 100}%` }}
                   ></div>
                 </div>
+                {pendingRequests.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-indigo-100">
+                    <p className="text-[10px] text-yellow-600 font-bold flex items-center gap-1">
+                      <FaHourglassHalf size={10} /> {pendingRequests.length} pending request(s)
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -180,8 +225,93 @@ export default function EventAssignment() {
 
       {/* RIGHT PANEL — Student Assignment */}
       <div className="flex-1 flex flex-col gap-6 overflow-hidden">
+        {/* Pending Requests Section */}
+        {pendingRequests.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col max-h-[30%] overflow-hidden">
+            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-yellow-50/30">
+              <div className="flex items-center gap-2">
+                <FaHourglassHalf className="text-yellow-500" />
+                <h3 className="font-bold text-gray-800">Pending Requests</h3>
+              </div>
+              <span className="px-3 py-1 bg-white border border-gray-100 rounded-full text-[10px] font-bold text-gray-500">
+                {pendingRequests.length} Request(s)
+              </span>
+            </div>
+            <div className="overflow-y-auto flex-1">
+              <table className="w-full text-left">
+                <thead className="sticky top-0 bg-white text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 z-10">
+                  <tr>
+                    <th className="px-6 py-4">Student</th>
+                    <th className="px-6 py-4">Skills</th>
+                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {pendingRequests.map(student => (
+                    <tr key={student.id} className="hover:bg-yellow-50/30 transition-colors group">
+                      <td className="px-6 py-3">
+                        <div
+                          onClick={() => navigate(`/dashboard/users/${student.id}`)}
+                          className="flex items-center gap-3 cursor-pointer group/item"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center font-bold text-xs flex-shrink-0 group-hover/item:bg-yellow-500 group-hover/item:text-white transition-colors">
+                            {student.firstName.charAt(0)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-gray-800 truncate group-hover/item:text-yellow-600 transition-colors">{student.firstName} {student.lastName}</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[9px] text-gray-400 flex items-center gap-1">
+                                <FaLaptopCode size={10} /> {student.personalInfo?.course}
+                              </span>
+                              <span className="text-gray-300">•</span>
+                              <span className="text-[9px] text-gray-400 flex items-center gap-1">
+                                <FaBookOpen size={10} /> {student.personalInfo?.yearLevel}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3">
+                        <div className="flex gap-1">
+                          {student.skills?.slice(0, 2).map((skill, idx) => (
+                            <span key={idx} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full text-[9px] font-bold">
+                              {skill.name || skill}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-6 py-3">
+                        <span className="px-2 py-0.5 bg-yellow-100 text-yellow-600 rounded-full text-[9px] font-bold">Pending</span>
+                      </td>
+                      <td className="px-6 py-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleApprove(student.id)}
+                            className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition-all shadow-sm shadow-green-100"
+                            title="Approve Request"
+                          >
+                            <FaCheck size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleReject(student.id)}
+                            className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-all shadow-sm shadow-red-100"
+                            title="Reject Request"
+                          >
+                            <FaBan size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* Top Section — Assigned Students */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col max-h-[45%] overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col max-h-[35%] overflow-hidden">
           <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/30">
             <div className="flex items-center gap-2">
               <FaCheckCircle className="text-green-500" />
@@ -205,7 +335,7 @@ export default function EventAssignment() {
                 {assignedStudents.map(student => (
                   <tr key={student.id} className="hover:bg-red-50/30 transition-colors group">
                     <td className="px-6 py-3">
-                      <div 
+                      <div
                         onClick={() => navigate(`/dashboard/users/${student.id}`)}
                         className="flex items-center gap-3 cursor-pointer group/item"
                       >
@@ -239,7 +369,7 @@ export default function EventAssignment() {
                       <span className="px-2 py-0.5 bg-green-50 text-green-600 rounded-full text-[9px] font-bold">Confirmed</span>
                     </td>
                     <td className="px-6 py-3 text-right">
-                      <button 
+                      <button
                         onClick={() => handleRemove(student.id)}
                         className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                       >
@@ -260,7 +390,7 @@ export default function EventAssignment() {
           </div>
         </div>
 
-        {/* Bottom Section — View Candidates */}
+        {/* Bottom Section — Add Students / Candidates */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex-1 flex flex-col overflow-hidden">
           <div className="p-5 border-b border-gray-100 space-y-4">
             <div className="flex items-center gap-2">
@@ -290,13 +420,13 @@ export default function EventAssignment() {
               </select>
             </div>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto p-5">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {candidateStudents.map(student => (
                 <div key={student.id} className="bg-white border border-gray-100 rounded-xl p-4 hover:border-indigo-200 hover:shadow-md transition-all group">
                   <div className="flex items-start justify-between mb-3">
-                    <div 
+                    <div
                       onClick={() => navigate(`/dashboard/users/${student.id}`)}
                       className="flex items-center gap-3 cursor-pointer group/item"
                     >
@@ -308,7 +438,7 @@ export default function EventAssignment() {
                         <p className="text-[10px] text-gray-400 font-medium">{student.id}</p>
                       </div>
                     </div>
-                    <button 
+                    <button
                       onClick={() => handleAssign(student)}
                       className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition-all shadow-sm shadow-green-100"
                       title="Assign to Event"
