@@ -151,7 +151,7 @@ export default function FacultyManagement() {
         isOpen={!!deletingFaculty}
         itemName={deletingFaculty?.fullname || 'Faculty'}
         onConfirm={handleDelete}
-        onCancel={() => setDeletingFaculty(null)}
+        onClose={() => setDeletingFaculty(null)}
       />
     </div>
   );
