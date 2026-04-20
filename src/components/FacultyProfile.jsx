@@ -221,9 +221,6 @@ export default function FacultyProfile({ user, onProfileUpdate }) {
         <h3 className="text-lg font-bold text-gray-800 mb-4">Account Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
           <div>
-            <span className="font-semibold text-gray-700">Account Type:</span> Faculty Admin Access
-          </div>
-          <div>
             <span className="font-semibold text-gray-700">Role:</span> {user?.role === 'faculty_admin' ? 'Faculty with Admin Access' : 'Faculty'}
           </div>
           <div>

@@ -1225,10 +1225,7 @@ app.put('/api/faculty/:id', async (req, res) => {
     if (req.body.email) {
       const existingEmail = await Faculty.findOne({ 
         email: req.body.email.toLowerCase(),
-        $or: [
-          { facultyid: { $ne: facultyId } },
-          { _id: { $ne: facultyId } }
-        ]
+        facultyid: { $ne: facultyId }
       });
       if (existingEmail) {
         return res.status(400).json({ message: `Email "${req.body.email}" already exists` });
