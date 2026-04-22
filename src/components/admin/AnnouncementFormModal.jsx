@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { FaTimes, FaSave, FaToggleOn, FaToggleOff } from 'react-icons/fa';
 
-export default function AnnouncementFormModal({ isOpen, onClose, onSave, announcement }) {
+export default function AnnouncementFormModal({ isOpen, onClose, onSave, announcement, showAlert }) {
   const [formData, setFormData] = useState({
     title: '',
     category: 'General',
@@ -62,11 +62,11 @@ export default function AnnouncementFormModal({ isOpen, onClose, onSave, announc
     
     // Validate required fields
     if (!formData.title.trim()) {
-      alert('Title is required');
+      showAlert?.('Validation Error', 'Title is required', 'warning');
       return;
     }
     if (!formData.content.trim()) {
-      alert('Content is required');
+      showAlert?.('Validation Error', 'Content is required', 'warning');
       return;
     }
     

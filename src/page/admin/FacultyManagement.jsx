@@ -4,14 +4,20 @@ import axios from 'axios';
 import FacultyCard from '../../components/admin/FacultyCard';
 import FacultyFormModal from '../../components/admin/FacultyFormModal';
 import DeleteConfirmModal from '../../components/admin/DeleteConfirmModal';
+import ConfirmModal from '../../components/admin/ConfirmModal';
 
-export default function FacultyManagement() {
+export default function FacultyManagement({ searchQuery: globalSearchQuery = '' }) {
   const [faculty, setFaculty] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [localSearchQuery, setLocalSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingFaculty, setEditingFaculty] = useState(null);
   const [deletingFaculty, setDeletingFaculty] = useState(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [confirmData, setConfirmData] = useState(null);
+
+  // Use global search query if provided, otherwise use local
+  const searchQuery = globalSearchQuery || localSearchQuery;
 
   // Filter faculty based on search
   const filteredFaculty = faculty.filter(f => {
@@ -43,15 +49,52 @@ export default function FacultyManagement() {
   }, []);
 
   const handleSavefaculty = async (facultyData) => {
+    // Show confirmation dialog
+    const isEditing = !!editingFaculty;
+    const message = isEditing 
+      ? `Are you sure you want to update ${facultyData.fullname}'s information?`
+      : `Are you sure you want to create a new faculty member: ${facultyData.fullname}?`;
+    
+    setConfirmData({
+      type: 'success',
+      title: isEditing ? 'Update Faculty' : 'Create Faculty',
+      message,
+      confirmText: isEditing ? 'Update' : 'Create',
+      onConfirm: () => proceedWithSave(facultyData, isEditing)
+    });
+    setIsConfirmOpen(true);
+  };
+
+  const proceedWithSave = async (facultyData, isEditing) => {
     try {
-      if (editingFaculty) {
+      if (isEditing) {
         // Update faculty
         await axios.put(`http://localhost:5000/api/faculty/${editingFaculty.facultyid}`, facultyData);
-        alert('Faculty updated successfully');
+        setConfirmData({
+          type: 'success',
+          title: 'Success',
+          message: 'Faculty updated successfully',
+          confirmText: 'OK',
+          showCancel: false,
+          onConfirm: () => {
+            setIsConfirmOpen(false);
+            setConfirmData(null);
+          }
+        });
       } else {
         // Create new faculty
         await axios.post('http://localhost:5000/api/faculty', facultyData);
-        alert('Faculty created successfully');
+        setConfirmData({
+          type: 'success',
+          title: 'Success',
+          message: 'Faculty created successfully',
+          confirmText: 'OK',
+          showCancel: false,
+          onConfirm: () => {
+            setIsConfirmOpen(false);
+            setConfirmData(null);
+          }
+        });
       }
       
       setIsFormOpen(false);
@@ -59,19 +102,45 @@ export default function FacultyManagement() {
       fetchFaculty();
     } catch (err) {
       console.error('Error saving faculty:', err);
-      alert(err.response?.data?.message || 'Error saving faculty');
+      setConfirmData({
+        type: 'danger',
+        title: 'Error',
+        message: err.response?.data?.message || 'Error saving faculty',
+        confirmText: 'OK',
+        showCancel: false,
+        onConfirm: () => setIsConfirmOpen(false)
+      });
     }
   };
 
   const handleDelete = async () => {
     try {
       await axios.delete(`http://localhost:5000/api/faculty/${deletingFaculty.facultyid}`);
-      alert('Faculty deleted successfully');
+      setConfirmData({
+        type: 'success',
+        title: 'Success',
+        message: 'Faculty deleted successfully',
+        confirmText: 'OK',
+        showCancel: false,
+        onConfirm: () => {
+          setIsConfirmOpen(false);
+          setConfirmData(null);
+        }
+      });
+      setIsConfirmOpen(true);
       setDeletingFaculty(null);
       fetchFaculty();
     } catch (err) {
       console.error('Error deleting faculty:', err);
-      alert(err.response?.data?.message || 'Error deleting faculty');
+      setConfirmData({
+        type: 'danger',
+        title: 'Error',
+        message: err.response?.data?.message || 'Error deleting faculty',
+        confirmText: 'OK',
+        showCancel: false,
+        onConfirm: () => setIsConfirmOpen(false)
+      });
+      setIsConfirmOpen(true);
     }
   };
 
@@ -96,7 +165,7 @@ export default function FacultyManagement() {
             type="text"
             placeholder="Search by name, ID, email, position, or program..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => setLocalSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
         </div>
@@ -152,6 +221,24 @@ export default function FacultyManagement() {
         itemName={deletingFaculty?.fullname || 'Faculty'}
         onConfirm={handleDelete}
         onClose={() => setDeletingFaculty(null)}
+      />
+
+      <ConfirmModal
+        isOpen={isConfirmOpen}
+        onClose={() => {
+          setIsConfirmOpen(false);
+          setConfirmData(null);
+        }}
+        onConfirm={() => {
+          if (confirmData?.onConfirm) {
+            confirmData.onConfirm();
+          }
+        }}
+        title={confirmData?.title || 'Confirm'}
+        message={confirmData?.message || ''}
+        confirmText={confirmData?.confirmText || 'Confirm'}
+        type={confirmData?.type || 'warning'}
+        showCancel={confirmData?.showCancel ?? true}
       />
     </div>
   );

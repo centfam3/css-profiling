@@ -4,14 +4,55 @@ import { FaPlus, FaSearch, FaCalendarAlt, FaMapMarkerAlt, FaUsers, FaEdit, FaTra
 import EventFormModal from '../../components/admin/EventFormModal';
 import DeleteConfirmModal from '../../components/admin/DeleteConfirmModal';
 import ParticipantsViewModal from '../../components/admin/ParticipantsViewModal';
+import ConfirmModal from '../../components/admin/ConfirmModal';
 
-export default function EventManagement() {
+export default function EventManagement({ searchQuery: globalSearchQuery = '' }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'table'
-  const [searchTerm, setSearchTerm] = useState('');
+  const [localSearchTerm, setLocalSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
   
+  const searchTerm = globalSearchQuery || localSearchTerm;
+
+  // Alert/Confirm Modal State
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'warning',
+    showCancel: true,
+    onConfirm: () => {},
+    confirmText: 'Confirm'
+  });
+
+  const showAlert = (title, message, type = 'info') => {
+    setModalConfig({
+      isOpen: true,
+      title,
+      message,
+      type,
+      showCancel: false,
+      onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })),
+      confirmText: 'OK'
+    });
+  };
+
+  const showConfirm = (title, message, onConfirm, type = 'warning') => {
+    setModalConfig({
+      isOpen: true,
+      title,
+      message,
+      type,
+      showCancel: true,
+      onConfirm: () => {
+        onConfirm();
+        setModalConfig(prev => ({ ...prev, isOpen: false }));
+      },
+      confirmText: 'Confirm'
+    });
+  };
+
   // Modal states
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
@@ -57,9 +98,10 @@ export default function EventManagement() {
       }
       setIsFormOpen(false);
       setEditingEvent(null);
+      showAlert('Success', `Event ${editingEvent ? 'updated' : 'created'} successfully!`, 'success');
     } catch (error) {
       console.error('Error saving event:', error);
-      alert('Error saving event: ' + (error.response?.data?.message || error.message));
+      showAlert('Error', 'Error saving event: ' + (error.response?.data?.message || error.message), 'danger');
     }
   };
 
@@ -68,9 +110,10 @@ export default function EventManagement() {
       await axios.delete(`http://localhost:5000/api/events/${id}`);
       setEvents(prev => prev.filter(e => e.id !== id));
       setDeletingEvent(null);
+      showAlert('Success', 'Event deleted successfully!', 'success');
     } catch (error) {
       console.error('Error deleting event:', error);
-      alert('Error deleting event: ' + (error.response?.data?.message || error.message));
+      showAlert('Error', 'Error deleting event: ' + (error.response?.data?.message || error.message), 'danger');
     }
   };
 
@@ -95,7 +138,7 @@ export default function EventManagement() {
               type="text"
               placeholder="Search events or venues..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => setLocalSearchTerm(e.target.value)}
               className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:bg-white focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 transition-all outline-none text-sm"
             />
           </div>
@@ -296,6 +339,16 @@ export default function EventManagement() {
         isOpen={!!viewingParticipants}
         onClose={() => setViewingParticipants(null)}
         event={viewingParticipants}
+      />
+      <ConfirmModal 
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={modalConfig.onConfirm}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        showCancel={modalConfig.showCancel}
+        confirmText={modalConfig.confirmText}
       />
     </div>
   );

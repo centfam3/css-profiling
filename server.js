@@ -12,6 +12,7 @@ import Event from './models/Event.js';
 import Announcement from './models/Announcement.js';
 import Admin from './models/Admin.js';
 import Faculty from './models/Faculty.js';
+import Notification from './models/Notification.js';
 
 dotenv.config();
 
@@ -29,6 +30,26 @@ function logError(msg) {
     fs.appendFileSync(logFile, logMsg);
   } catch (e) {
     // Ignore file write errors
+  }
+}
+
+// Helper to create notifications
+async function createNotification({ userId, role, type, message, link }) {
+  try {
+    const notification = new Notification({
+      userId,
+      role,
+      type,
+      message,
+      link,
+      timestamp: new Date(),
+      isRead: false
+    });
+    await notification.save();
+    logError(`🔔 Notification created: ${message} (Role: ${role}, User: ${userId})`);
+    return notification;
+  } catch (error) {
+    logError(`❌ Error creating notification: ${error.message}`);
   }
 }
 
@@ -186,10 +207,104 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
-// Global error handler
-app.use((err, req, res, next) => {
-  console.error('🔴 GLOBAL ERROR:', err);
-  res.status(500).json({ message: 'Server error', error: err.message });
+// ========== NOTIFICATION ENDPOINTS ==========
+
+// GET /api/notifications - Get for user (ID or role)
+app.get('/api/notifications', async (req, res) => {
+  try {
+    const { userId, role } = req.query;
+    let query = {};
+
+    if (userId && role) {
+      // 1. Notifications specifically for this user
+      // 2. Notifications for this role that are NOT targeted to a specific user
+      // 3. Notifications for everyone that are NOT targeted to a specific user
+      query = {
+        $or: [
+          { userId: userId },
+          { $and: [{ role: role }, { userId: null }] },
+          { $and: [{ role: 'all' }, { userId: null }] }
+        ]
+      };
+    } else if (userId) {
+      query = { 
+        $or: [
+          { userId: userId }, 
+          { $and: [{ role: 'all' }, { userId: null }] }
+        ] 
+      };
+    } else if (role) {
+      query = { 
+        $or: [
+          { role: role }, 
+          { role: 'all' }
+        ] 
+      };
+    }
+
+    console.log(`[API] Fetching notifications for: userId=${userId}, role=${role}`);
+    const notifications = await Notification.find(query).sort({ timestamp: -1 }).limit(50);
+    console.log(`[API] Found ${notifications.length} notifications`);
+    res.json(notifications);
+  } catch (error) {
+    logError(`❌ Error fetching notifications: ${error.message}`);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// POST /api/notifications - Create notification
+app.post('/api/notifications', async (req, res) => {
+  try {
+    const { userId, role, type, message, link } = req.body;
+    if (!message) {
+      return res.status(400).json({ message: 'Message is required' });
+    }
+    const notification = await createNotification({ userId, role, type, message, link });
+    res.status(201).json(notification);
+  } catch (error) {
+    console.error('Error creating notification:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// PUT /api/notifications/:id/read - Mark single as read
+app.put('/api/notifications/:id/read', async (req, res) => {
+  try {
+    const notification = await Notification.findByIdAndUpdate(
+      req.params.id,
+      { isRead: true },
+      { new: true }
+    );
+    if (notification) {
+      res.json(notification);
+    } else {
+      res.status(404).json({ message: 'Notification not found' });
+    }
+  } catch (error) {
+    console.error('Error marking notification as read:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// PUT /api/notifications/read-all - Mark all as read for user/role
+app.put('/api/notifications/read-all', async (req, res) => {
+  try {
+    const { userId, role } = req.body;
+    let query = {};
+    if (userId && role) {
+      query = { $or: [{ userId: userId }, { role: role }, { role: 'all' }] };
+    } else if (userId) {
+      query = { $or: [{ userId: userId }, { role: 'all' }] };
+    } else if (role) {
+      query = { $or: [{ role: role }, { role: 'all' }] };
+    }
+    
+    await Notification.updateMany(query, { isRead: true });
+    res.json({ message: 'All notifications marked as read' });
+  } catch (error) {
+    console.error('Error marking all notifications as read:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
 });
 
 // ========== ANNOUNCEMENT ENDPOINTS (TOP PRIORITY) ==========
@@ -252,6 +367,20 @@ app.post('/api/announcements', async (req, res) => {
       const newAnnouncement = new Announcement(announcementData);
       const savedAnnouncement = await newAnnouncement.save();
       
+      // Notify Admin and Faculty about new announcement
+      await createNotification({
+        role: 'admin',
+        type: 'Bullhorn',
+        message: `New announcement: ${savedAnnouncement.title}`,
+        link: `/dashboard/announcements`
+      });
+      await createNotification({
+        role: 'faculty',
+        type: 'Bullhorn',
+        message: `New announcement: ${savedAnnouncement.title}`,
+        link: `/dashboard/announcements`
+      });
+
       console.log('[API] ✓ Announcement created successfully:', savedAnnouncement._id);
       res.status(201).json(savedAnnouncement);
     } catch (mongoError) {
@@ -328,6 +457,20 @@ app.put('/api/announcements/:id', async (req, res) => {
     }
     
     if (updatedAnnouncement) {
+      // Notify Admin and Faculty about announcement update
+      await createNotification({
+        role: 'admin',
+        type: 'Edit',
+        message: `Announcement updated: ${updatedAnnouncement.title}`,
+        link: `/dashboard/announcements`
+      });
+      await createNotification({
+        role: 'faculty',
+        type: 'Edit',
+        message: `Announcement updated: ${updatedAnnouncement.title}`,
+        link: `/dashboard/announcements`
+      });
+
       res.json(updatedAnnouncement);
     } else {
       console.log(`[API Error] Announcement ${id} not found by either 'id' or '_id'`);
@@ -343,8 +486,9 @@ app.put('/api/announcements/:id', async (req, res) => {
 app.delete('/api/announcements/:id', async (req, res) => {
   try {
     const id = req.params.id;
-    console.log(`[API] DELETE /api/announcements/${id}`);
-    
+    const announcement = await Announcement.findOne({ id: id }) || await Announcement.findById(id);
+    const annTitle = announcement ? announcement.title : id;
+
     // Try finding by custom 'id' field first, then by MongoDB '_id'
     let result = await Announcement.findOneAndDelete({ id: id });
     
@@ -359,6 +503,19 @@ app.delete('/api/announcements/:id', async (req, res) => {
     }
     
     if (result) {
+      // Notify Admin and Faculty about announcement deletion
+      await createNotification({
+        role: 'admin',
+        type: 'Trash',
+        message: `Announcement deleted: ${annTitle}`,
+        link: `/dashboard/announcements`
+      });
+      await createNotification({
+        role: 'faculty',
+        type: 'Trash',
+        message: `Announcement deleted: ${annTitle}`,
+        link: `/dashboard/announcements`
+      });
       res.json({ message: 'Announcement deleted' });
     } else {
       res.status(404).json({ message: 'Announcement not found' });
@@ -523,6 +680,20 @@ app.post('/api/students', async (req, res) => {
     logError('Step 7: Save completed successfully!');
     logError(`Saved ID: ${result._id}`);
     
+    // Notify Admin and Faculty about new student registration
+    await createNotification({
+      role: 'admin',
+      type: 'UserPlus',
+      message: `New student registered: ${result.firstName} ${result.lastName} (${result.id})`,
+      link: `/dashboard/student-management`
+    });
+    await createNotification({
+      role: 'faculty',
+      type: 'UserPlus',
+      message: `New student registered: ${result.firstName} ${result.lastName} (${result.id})`,
+      link: `/dashboard/student-management`
+    });
+    
     res.status(201).json(result);
     logError('========== REQUEST COMPLETE ==========\n');
     
@@ -627,6 +798,21 @@ app.put('/api/students/:id', async (req, res) => {
       }
 
       console.log(`[Success] Student ${oldId} updated to ${updatedStudent.id}`);
+
+      // Notify Admin and Faculty about student update
+      await createNotification({
+        role: 'admin',
+        type: 'Edit',
+        message: `Student updated: ${updatedStudent.firstName} ${updatedStudent.lastName} (${updatedStudent.id})`,
+        link: `/dashboard/users/${updatedStudent.id}`
+      });
+      await createNotification({
+        role: 'faculty',
+        type: 'Edit',
+        message: `Student updated: ${updatedStudent.firstName} ${updatedStudent.lastName} (${updatedStudent.id})`,
+        link: `/dashboard/users/${updatedStudent.id}`
+      });
+
       res.json(updatedStudent);
     } else {
       console.log(`[Error] Student ${oldId} not found`);
@@ -643,6 +829,10 @@ app.delete('/api/students/:id', async (req, res) => {
   try {
     const studentId = req.params.id;
     
+    // Find student first to get their name for the notification
+    const student = await Student.findOne({ id: studentId });
+    const studentName = student ? `${student.firstName} ${student.lastName}` : studentId;
+
     // Delete the student
     await Student.findOneAndDelete({ id: studentId });
 
@@ -651,6 +841,20 @@ app.delete('/api/students/:id', async (req, res) => {
       { participants: studentId },
       { $pull: { participants: studentId } }
     );
+
+    // Notify Admin and Faculty about student deletion
+    await createNotification({
+      role: 'admin',
+      type: 'Trash',
+      message: `Student account deleted: ${studentName} (${studentId})`,
+      link: `/dashboard/student-management`
+    });
+    await createNotification({
+      role: 'faculty',
+      type: 'Trash',
+      message: `Student account deleted: ${studentName} (${studentId})`,
+      link: `/dashboard/student-management`
+    });
 
     res.json({ message: 'Student deleted and removed from all events' });
   } catch (error) {
@@ -809,6 +1013,15 @@ app.post('/api/students/:id/achievements', async (req, res) => {
     
     const savedStudent = await student.save();
     
+    // Notify the specific student about the new achievement
+    await createNotification({
+      userId: req.params.id,
+      role: 'student',
+      type: 'Trophy',
+      message: `Congratulations! Your achievement "${newAchievement.title}" has been added.`,
+      link: `/student-dashboard/achievements`
+    });
+
     console.log('   After Save - Achievements:', savedStudent.achievements);
     console.log('   Full saved student object keys:', Object.keys(savedStudent.toObject ? savedStudent.toObject() : savedStudent));
 
@@ -923,6 +1136,21 @@ app.post('/api/events', async (req, res) => {
     });
     
     await newEvent.save();
+
+    // Notify Admin and Faculty about new event creation
+    await createNotification({
+      role: 'admin',
+      type: 'CalendarPlus',
+      message: `New event created: ${newEvent.name}`,
+      link: `/dashboard/event-management`
+    });
+    await createNotification({
+      role: 'faculty',
+      type: 'CalendarPlus',
+      message: `New event created: ${newEvent.name}`,
+      link: `/dashboard/event-management`
+    });
+
     res.status(201).json(newEvent);
   } catch (error) {
     console.error('Error creating event:', error);
@@ -943,6 +1171,21 @@ app.put('/api/events/:id', async (req, res) => {
     
     if (updatedEvent) {
       console.log(`✓ Event updated:`, updatedEvent);
+
+      // Notify Admin and Faculty about event update
+      await createNotification({
+        role: 'admin',
+        type: 'Edit',
+        message: `Event updated: ${updatedEvent.title || updatedEvent.name}`,
+        link: `/dashboard/event-management`
+      });
+      await createNotification({
+        role: 'faculty',
+        type: 'Edit',
+        message: `Event updated: ${updatedEvent.title || updatedEvent.name}`,
+        link: `/dashboard/event-management`
+      });
+
       res.json(updatedEvent);
     } else {
       res.status(404).json({ message: 'Event not found' });
@@ -956,15 +1199,83 @@ app.put('/api/events/:id', async (req, res) => {
 // DELETE /api/events/:id - Delete event
 app.delete('/api/events/:id', async (req, res) => {
   try {
-    const result = await Event.findOneAndDelete({ id: req.params.id });
+    const eventId = req.params.id;
+    const event = await Event.findOne({ id: eventId });
+    const eventName = event ? (event.title || event.name) : eventId;
+
+    const result = await Event.findOneAndDelete({ id: eventId });
     
     if (result) {
+      // Notify Admin and Faculty about event deletion
+      await createNotification({
+        role: 'admin',
+        type: 'Trash',
+        message: `Event deleted: ${eventName}`,
+        link: `/dashboard/event-management`
+      });
+      await createNotification({
+        role: 'faculty',
+        type: 'Trash',
+        message: `Event deleted: ${eventName}`,
+        link: `/dashboard/event-management`
+      });
       res.json({ message: 'Event deleted' });
     } else {
       res.status(404).json({ message: 'Event not found' });
     }
   } catch (error) {
     console.error('Error deleting event:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// POST /api/events/:id/assign - Admin directly assigns student to event (bypasses pending request)
+app.post('/api/events/:id/assign', async (req, res) => {
+  console.log('[ASSIGN] Event ID:', req.params.id);
+  console.log('[ASSIGN] Student ID:', req.body.studentId);
+  try {
+    const { studentId } = req.body;
+    
+    if (!studentId) {
+      return res.status(400).json({ message: 'Student ID is required' });
+    }
+    
+    const event = await Event.findOne({ id: req.params.id });
+    console.log('[ASSIGN] Event found:', !!event);
+    
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    
+    // Check if already assigned
+    if (event.participants.includes(studentId)) {
+      return res.status(400).json({ message: 'Student already assigned to this event' });
+    }
+    
+    // Check capacity
+    if (event.participants.length >= event.maxParticipants) {
+      return res.status(400).json({ message: 'Event is at maximum capacity' });
+    }
+    
+    // Directly add to participants (admin assignment)
+    await Event.updateOne(
+      { id: req.params.id },
+      { $push: { participants: studentId } }
+    );
+
+    // Notify the specific student about being assigned to an event
+    await createNotification({
+      userId: studentId,
+      role: 'student',
+      type: 'CalendarPlus',
+      message: `You have been assigned to the event: ${event.title || event.name}`,
+      link: `/student-dashboard/events`
+    });
+
+    const updatedEvent = await Event.findOne({ id: req.params.id });
+    res.json(updatedEvent);
+  } catch (error) {
+    console.error('Error assigning student:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -1004,6 +1315,24 @@ app.post('/api/events/:id/request', async (req, res) => {
       }
       
       await Event.updateOne({ id: req.params.id }, { $push: { pendingRequests: studentId } });
+      
+      // Notify Admin and Faculty about the new request
+      const student = await Student.findOne({ id: studentId });
+      const studentName = student ? `${student.firstName} ${student.lastName}` : studentId;
+      
+      await createNotification({
+        role: 'admin',
+        type: 'Info',
+        message: `New event join request from ${studentName} for event: ${event.title || event.name}`,
+        link: `/dashboard/event-assignment`
+      });
+      await createNotification({
+        role: 'faculty',
+        type: 'Info',
+        message: `New event join request from ${studentName} for event: ${event.title || event.name}`,
+        link: `/dashboard/event-assignment`
+      });
+
       const updatedEvent = await Event.findOne({ id: req.params.id });
       res.json(updatedEvent);
     } else {
@@ -1050,6 +1379,16 @@ app.post('/api/events/:id/approve', async (req, res) => {
           $push: { participants: studentId }
         }
       );
+
+      // Notify the student about the approval
+      await createNotification({
+        userId: studentId,
+        role: 'student',
+        type: 'CheckCircle',
+        message: `Your request to join "${event.title || event.name}" has been approved!`,
+        link: `/student-dashboard/events`
+      });
+
       const updatedEvent = await Event.findOne({ id: req.params.id });
       res.json(updatedEvent);
     } else {
@@ -1078,6 +1417,16 @@ app.post('/api/events/:id/reject', async (req, res) => {
         { id: req.params.id },
         { $pull: { pendingRequests: studentId } }
       );
+
+      // Notify the student about the rejection
+      await createNotification({
+        userId: studentId,
+        role: 'student',
+        type: 'ExclamationCircle',
+        message: `Your request to join "${event.title || event.name}" has been declined.`,
+        link: `/student-dashboard/events`
+      });
+
       const updatedEvent = await Event.findOne({ id: req.params.id });
       res.json(updatedEvent);
     } else {
@@ -1105,6 +1454,23 @@ app.post('/api/events/:id/unregister', async (req, res) => {
     );
     
     if (updatedEvent) {
+      // Notify Admin and Faculty about student unregistering
+      const student = await Student.findOne({ id: studentId });
+      const studentName = student ? `${student.firstName} ${student.lastName}` : studentId;
+      
+      await createNotification({
+        role: 'admin',
+        type: 'Info',
+        message: `${studentName} unregistered from event: ${updatedEvent.title || updatedEvent.name}`,
+        link: `/dashboard/event-assignment`
+      });
+      await createNotification({
+        role: 'faculty',
+        type: 'Info',
+        message: `${studentName} unregistered from event: ${updatedEvent.title || updatedEvent.name}`,
+        link: `/dashboard/event-assignment`
+      });
+
       res.json(updatedEvent);
     } else {
       res.status(404).json({ message: 'Event not found' });
@@ -1208,6 +1574,21 @@ app.post('/api/faculty', async (req, res) => {
     });
     
     await newFaculty.save();
+
+    // Notify Admin and Faculty about new faculty creation
+    await createNotification({
+      role: 'admin',
+      type: 'UserPlus',
+      message: `New faculty registered: ${newFaculty.fullname} (${newFaculty.facultyid})`,
+      link: `/dashboard/faculty`
+    });
+    await createNotification({
+      role: 'faculty',
+      type: 'UserPlus',
+      message: `New faculty registered: ${newFaculty.fullname} (${newFaculty.facultyid})`,
+      link: `/dashboard/faculty`
+    });
+
     res.status(201).json(newFaculty);
   } catch (error) {
     console.error('Error creating faculty:', error);
@@ -1265,6 +1646,21 @@ app.put('/api/faculty/:id', async (req, res) => {
     
     if (updatedFaculty) {
       console.log(`[API] ✓ Faculty updated:`, updatedFaculty._id);
+
+      // Notify Admin and Faculty about faculty update
+      await createNotification({
+        role: 'admin',
+        type: 'Edit',
+        message: `Faculty updated: ${updatedFaculty.fullname} (${updatedFaculty.facultyid})`,
+        link: `/dashboard/faculty`
+      });
+      await createNotification({
+        role: 'faculty',
+        type: 'Edit',
+        message: `Faculty updated: ${updatedFaculty.fullname} (${updatedFaculty.facultyid})`,
+        link: `/dashboard/faculty`
+      });
+
       res.json(updatedFaculty);
     } else {
       console.error(`[API] Faculty not found with id: ${facultyId}`);
@@ -1280,11 +1676,25 @@ app.put('/api/faculty/:id', async (req, res) => {
 app.delete('/api/faculty/:id', async (req, res) => {
   try {
     const facultyId = req.params.id;
-    console.log(`[API] DELETE /api/faculty/${facultyId}`);
-    
+    const faculty = await Faculty.findOne({ facultyid: facultyId });
+    const facultyName = faculty ? faculty.fullname : facultyId;
+
     const result = await Faculty.findOneAndDelete({ facultyid: facultyId });
     
     if (result) {
+      // Notify Admin and Faculty about faculty deletion
+      await createNotification({
+        role: 'admin',
+        type: 'Trash',
+        message: `Faculty deleted: ${facultyName} (${facultyId})`,
+        link: `/dashboard/faculty`
+      });
+      await createNotification({
+        role: 'faculty',
+        type: 'Trash',
+        message: `Faculty deleted: ${facultyName} (${facultyId})`,
+        link: `/dashboard/faculty`
+      });
       res.json({ message: 'Faculty deleted successfully' });
     } else {
       res.status(404).json({ message: 'Faculty not found' });
@@ -1293,6 +1703,12 @@ app.delete('/api/faculty/:id', async (req, res) => {
     console.error('Error deleting faculty:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
+});
+
+// Global error handler (Must be last)
+app.use((err, req, res, next) => {
+  console.error('🔴 GLOBAL ERROR:', err);
+  res.status(500).json({ message: 'Server error', error: err.message });
 });
 
 app.listen(PORT, () => {

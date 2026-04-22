@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MdEdit, MdSave, MdCancel } from 'react-icons/md';
 import { FaUser, FaEnvelope, FaIdCard, FaCalendar, FaBook, FaBriefcase } from 'react-icons/fa';
+import ConfirmModal from './admin/ConfirmModal';
 
 export default function FacultyProfile({ user, onProfileUpdate }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -13,6 +14,23 @@ export default function FacultyProfile({ user, onProfileUpdate }) {
     position: user?.position || '',
   });
   const [displayUser, setDisplayUser] = useState(user);
+  
+  // Alert Modal State
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
+
+  const showAlert = (title, message, type = 'info') => {
+    setModalConfig({
+      isOpen: true,
+      title,
+      message,
+      type
+    });
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -26,7 +44,7 @@ export default function FacultyProfile({ user, onProfileUpdate }) {
     try {
       const facultyId = user.facultyid || user.id;
       if (!facultyId) {
-        alert('Faculty ID is missing');
+        showAlert('Error', 'Faculty ID is missing', 'danger');
         return;
       }
 
@@ -51,14 +69,14 @@ export default function FacultyProfile({ user, onProfileUpdate }) {
         }
         
         setIsEditing(false);
-        alert('Profile updated successfully!');
+        showAlert('Success', 'Profile updated successfully!', 'success');
       } else {
         console.error('Update error:', data);
-        alert(`Failed to update profile: ${data.message || 'Unknown error'}`);
+        showAlert('Update Failed', `Failed to update profile: ${data.message || 'Unknown error'}`, 'danger');
       }
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert(`Error updating profile: ${error.message}`);
+      showAlert('Error', `Error updating profile: ${error.message}`, 'danger');
     }
   };
 
@@ -256,6 +274,17 @@ export default function FacultyProfile({ user, onProfileUpdate }) {
           </li>
         </ul>
       </div>
+
+      <ConfirmModal 
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        showCancel={false}
+        confirmText="OK"
+      />
     </div>
   );
 }

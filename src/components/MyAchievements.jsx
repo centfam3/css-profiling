@@ -70,7 +70,7 @@ export function AchievementCard({ achievement }) {
   )
 }
 
-export default function MyAchievements({ student: initialStudent }) {
+export default function MyAchievements({ student: initialStudent, searchQuery = '' }) {
   const [activeTab, setActiveTab] = useState('Academic')
   const [student, setStudent] = useState(initialStudent)
   const [loading, setLoading] = useState(true)
@@ -81,12 +81,7 @@ export default function MyAchievements({ student: initialStudent }) {
       
       try {
         setLoading(true)
-        console.log('📖 Fetching achievements for:', initialStudent.id)
         const response = await axios.get(`http://localhost:5000/api/students/${initialStudent.id}`)
-        console.log('✅ Received student data:', response.data)
-        console.log('   Achievements:', response.data.achievements)
-        console.log('   Achievements type:', typeof response.data.achievements)
-        console.log('   Achievements length:', response.data.achievements?.length)
         setStudent(response.data)
       } catch (error) {
         console.error('Error fetching student achievements:', error)
@@ -99,10 +94,13 @@ export default function MyAchievements({ student: initialStudent }) {
   }, [initialStudent?.id])
 
   const achievements = student?.achievements || []
-  const filteredAchievements = achievements.filter(a => a.category === activeTab)
-
-  console.log('🎓 MyAchievements - All achievements:', achievements)
-  console.log('🎓 MyAchievements - Filtered achievements:', filteredAchievements)
+  const filteredAchievements = achievements.filter(a => {
+    const matchesTab = a.category === activeTab;
+    const matchesSearch = !searchQuery || 
+      a.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      a.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesTab && matchesSearch;
+  })
 
   if (loading) {
     return (

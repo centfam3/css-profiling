@@ -8,7 +8,7 @@ const adminNavItems = [
   {
     section: 'Main',
     items: [
-      { label: 'Dashboard Overview', icon: <MdDashboard />, to: '/dashboard' },
+      { label: 'Dashboard', icon: <MdDashboard />, to: '/dashboard' },
       { label: 'Student Management', icon: <FaUsers />, to: '/dashboard/students' },
       { label: 'Faculty Management', icon: <MdPeople />, to: '/dashboard/faculty' },
       { label: 'Event Management', icon: <FaCalendarAlt />, to: '/dashboard/events' },
@@ -24,7 +24,7 @@ const facultyAdminNavItems = [
   {
     section: 'Main',
     items: [
-      { label: 'Dashboard Overview', icon: <MdDashboard />, to: '/dashboard' },
+      { label: 'Dashboard', icon: <MdDashboard />, to: '/dashboard' },
       { label: 'Student Management', icon: <FaUsers />, to: '/dashboard/students' },
       { label: 'Event Management', icon: <FaCalendarAlt />, to: '/dashboard/events' },
       { label: 'Event Assignment', icon: <FaClipboardList />, to: '/dashboard/assignment' },

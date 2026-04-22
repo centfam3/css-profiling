@@ -90,7 +90,7 @@ export default function EventFormModal({ isOpen, onClose, onSave, event }) {
         <form onSubmit={handleSubmit} className="p-8 space-y-6">
           <div>
             <label className={labelClasses}>Event Name</label>
-            <input name="name" value={formData.name} onChange={handleChange} className={inputClasses} required placeholder="e.g. Annual Tech Symposium" />
+            <input name="name" value={formData.name} onChange={handleChange} className={inputClasses} required />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -131,12 +131,12 @@ export default function EventFormModal({ isOpen, onClose, onSave, event }) {
 
           <div>
             <label className={labelClasses}>Venue</label>
-            <input name="venue" value={formData.venue} onChange={handleChange} className={inputClasses} required placeholder="e.g. Main Auditorium" />
+            <input name="venue" value={formData.venue} onChange={handleChange} className={inputClasses} required />
           </div>
 
           <div>
             <label className={labelClasses}>Description</label>
-            <textarea name="description" value={formData.description} onChange={handleChange} rows="3" className={inputClasses} placeholder="Describe the event goals and activities..."></textarea>
+            <textarea name="description" value={formData.description} onChange={handleChange} rows="3" className={inputClasses}></textarea>
           </div>
 
           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">

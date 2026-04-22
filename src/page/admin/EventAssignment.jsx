@@ -2,16 +2,21 @@ import React, { useState, useMemo, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { FaSearch, FaCalendarAlt, FaMapMarkerAlt, FaUsers, FaPlus, FaTimes, FaExclamationTriangle, FaCheckCircle, FaFilter, FaLaptopCode, FaBookOpen, FaCheck, FaBan, FaHourglassHalf } from 'react-icons/fa';
+import ConfirmModal from '../../components/admin/ConfirmModal';
 
-export default function EventAssignment() {
+export default function EventAssignment({ searchQuery: globalSearchQuery = '' }) {
   const navigate = useNavigate();
   const [events, setEvents] = useState([]);
   const [students, setStudents] = useState([]);
   const [selectedEventId, setSelectedEventId] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const [searchTerm, setSearchTerm] = useState('');
+  const [localSearchTerm, setLocalSearchTerm] = useState('');
   const [filterSkill, setFilterSkill] = useState('');
+  
+  const searchTerm = globalSearchQuery || localSearchTerm;
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [confirmData, setConfirmData] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -64,7 +69,15 @@ export default function EventAssignment() {
 
   const handleApprove = async (studentId) => {
     if (selectedEvent.participants.length >= selectedEvent.maxParticipants) {
-      alert("Maximum participants reached for this event!");
+      setConfirmData({
+        type: 'warning',
+        title: 'Limit Reached',
+        message: 'Maximum participants reached for this event!',
+        confirmText: 'OK',
+        showCancel: false,
+        onConfirm: () => setIsConfirmOpen(false)
+      });
+      setIsConfirmOpen(true);
       return;
     }
 
@@ -78,32 +91,62 @@ export default function EventAssignment() {
       ));
     } catch (error) {
       console.error('Error approving request:', error);
-      alert('Error approving request: ' + (error.response?.data?.message || error.message));
+      setConfirmData({
+        type: 'danger',
+        title: 'Error',
+        message: 'Error approving request: ' + (error.response?.data?.message || error.message),
+        confirmText: 'OK',
+        showCancel: false,
+        onConfirm: () => setIsConfirmOpen(false)
+      });
+      setIsConfirmOpen(true);
     }
   };
 
   const handleReject = async (studentId) => {
-    if (!confirm('Are you sure you want to reject this request?')) {
-      return;
-    }
+    setConfirmData({
+      type: 'warning',
+      title: 'Confirm Reject',
+      message: 'Are you sure you want to reject this request?',
+      confirmText: 'Reject',
+      showCancel: true,
+      onConfirm: async () => {
+        try {
+          const response = await axios.post(`http://localhost:5000/api/events/${selectedEventId}/reject`, {
+            studentId: studentId
+          });
 
-    try {
-      const response = await axios.post(`http://localhost:5000/api/events/${selectedEventId}/reject`, {
-        studentId: studentId
-      });
-
-      setEvents(prev => prev.map(e =>
-        e.id === selectedEventId ? response.data : e
-      ));
-    } catch (error) {
-      console.error('Error rejecting request:', error);
-      alert('Error rejecting request: ' + (error.response?.data?.message || error.message));
-    }
+          setEvents(prev => prev.map(e =>
+            e.id === selectedEventId ? response.data : e
+          ));
+          setIsConfirmOpen(false);
+        } catch (error) {
+          console.error('Error rejecting request:', error);
+          setConfirmData({
+            type: 'danger',
+            title: 'Error',
+            message: 'Error rejecting request: ' + (error.response?.data?.message || error.message),
+            confirmText: 'OK',
+            showCancel: false,
+            onConfirm: () => setIsConfirmOpen(false)
+          });
+        }
+      }
+    });
+    setIsConfirmOpen(true);
   };
 
   const handleAssign = async (student) => {
     if (selectedEvent.participants.length >= selectedEvent.maxParticipants) {
-      alert("Maximum participants reached for this event!");
+      setConfirmData({
+        type: 'warning',
+        title: 'Limit Reached',
+        message: 'Maximum participants reached for this event!',
+        confirmText: 'OK',
+        showCancel: false,
+        onConfirm: () => setIsConfirmOpen(false)
+      });
+      setIsConfirmOpen(true);
       return;
     }
 
@@ -113,38 +156,89 @@ export default function EventAssignment() {
     );
 
     if (sameDateEvent) {
-      if (!confirm(`${student.firstName} ${student.lastName} is already assigned to "${sameDateEvent.name}" on ${selectedEvent.date}. Assign anyway?`)) {
-        return;
-      }
+      setConfirmData({
+        type: 'warning',
+        title: 'Schedule Conflict',
+        message: `${student.firstName} ${student.lastName} is already assigned to "${sameDateEvent.name}" on ${selectedEvent.date}. Assign anyway?`,
+        confirmText: 'Assign Anyway',
+        showCancel: true,
+        onConfirm: () => proceedWithAssignment(student)
+      });
+      setIsConfirmOpen(true);
+      return;
     }
 
+    proceedWithAssignment(student);
+  };
+
+  const proceedWithAssignment = (student) => {
+    setConfirmData({
+      type: 'success',
+      title: 'Confirm Assignment',
+      message: `Are you sure you want to assign ${student.firstName} ${student.lastName} to "${selectedEvent.name}"?`,
+      confirmText: 'Confirm',
+      showCancel: true,
+      onConfirm: () => assignStudent(student)
+    });
+    setIsConfirmOpen(true);
+  };
+
+  const assignStudent = async (student) => {
     try {
-      const response = await axios.post(`http://localhost:5000/api/events/${selectedEventId}/register`, {
+      const response = await axios.post(`http://localhost:5000/api/events/${selectedEventId}/assign`, {
         studentId: student.id
       });
 
       setEvents(prev => prev.map(e =>
         e.id === selectedEventId ? response.data : e
       ));
+      setIsConfirmOpen(false);
+      setConfirmData(null);
     } catch (error) {
       console.error('Error assigning student:', error);
-      alert('Error assigning student: ' + (error.response?.data?.message || error.message));
+      setConfirmData({
+        type: 'danger',
+        title: 'Error',
+        message: 'Error assigning student: ' + (error.response?.data?.message || error.message),
+        confirmText: 'OK',
+        showCancel: false,
+        onConfirm: () => setIsConfirmOpen(false)
+      });
+      setIsConfirmOpen(true);
     }
   };
 
   const handleRemove = async (studentId) => {
-    try {
-      const response = await axios.post(`http://localhost:5000/api/events/${selectedEventId}/unregister`, {
-        studentId: studentId
-      });
+    setConfirmData({
+      type: 'warning',
+      title: 'Confirm Removal',
+      message: 'Are you sure you want to remove this student from the event?',
+      confirmText: 'Remove',
+      showCancel: true,
+      onConfirm: async () => {
+        try {
+          const response = await axios.post(`http://localhost:5000/api/events/${selectedEventId}/unregister`, {
+            studentId: studentId
+          });
 
-      setEvents(prev => prev.map(e =>
-        e.id === selectedEventId ? response.data : e
-      ));
-    } catch (error) {
-      console.error('Error removing student:', error);
-      alert('Error removing student: ' + (error.response?.data?.message || error.message));
-    }
+          setEvents(prev => prev.map(e =>
+            e.id === selectedEventId ? response.data : e
+          ));
+          setIsConfirmOpen(false);
+        } catch (error) {
+          console.error('Error removing student:', error);
+          setConfirmData({
+            type: 'danger',
+            title: 'Error',
+            message: 'Error removing student: ' + (error.response?.data?.message || error.message),
+            confirmText: 'OK',
+            showCancel: false,
+            onConfirm: () => setIsConfirmOpen(false)
+          });
+        }
+      }
+    });
+    setIsConfirmOpen(true);
   };
 
   if (loading) {
@@ -404,7 +498,7 @@ export default function EventAssignment() {
                   type="text"
                   placeholder="Search candidates..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => setLocalSearchTerm(e.target.value)}
                   className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:bg-white focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 transition-all outline-none text-xs"
                 />
               </div>
@@ -473,6 +567,26 @@ export default function EventAssignment() {
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={isConfirmOpen}
+        onClose={() => {
+          setIsConfirmOpen(false);
+          setConfirmData(null);
+        }}
+        onConfirm={() => {
+          if (confirmData?.onConfirm) {
+            confirmData.onConfirm();
+          }
+          setIsConfirmOpen(false);
+          setConfirmData(null);
+        }}
+        title={confirmData?.title || 'Confirm'}
+        message={confirmData?.message || ''}
+        confirmText={confirmData?.confirmText || 'Confirm'}
+        type={confirmData?.type || 'warning'}
+        showCancel={confirmData?.showCancel ?? true}
+      />
     </div>
   );
 }

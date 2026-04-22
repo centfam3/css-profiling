@@ -4,11 +4,29 @@ import axios from 'axios'
 import LoginPage from './components/LoginPage'
 import FacultyDashboard from './page/FacultyDashboard'
 import StudentDashboard from './page/StudentDashboard'
+import ConfirmModal from './components/admin/ConfirmModal'
 
 function AppContent() {
   const [user, setUser] = useState(null); // Global user state
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
+
+  // Alert Modal State
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'danger'
+  });
+
+  const showAlert = (title, message, type = 'danger') => {
+    setModalConfig({
+      isOpen: true,
+      title,
+      message,
+      type
+    });
+  };
 
   // Restore user session from sessionStorage on mount
   useEffect(() => {
@@ -56,7 +74,7 @@ function AppContent() {
       }
     } catch (err) {
       const errorMsg = err.response?.data?.message || err.message || 'Invalid email or password';
-      alert(errorMsg);
+      showAlert('Login Failed', errorMsg, 'danger');
       console.error('Login error:', err);
     }
   }
@@ -80,6 +98,7 @@ function AppContent() {
   
   //PART 1: CLIENT SIDE ROUTING
   return (
+    <>
     <Routes>
       {/* Home redirect logic based on role */}
       <Route 
@@ -128,6 +147,18 @@ function AppContent() {
       {/* Catch-all */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+
+    <ConfirmModal 
+      isOpen={modalConfig.isOpen}
+      onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+      onConfirm={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+      title={modalConfig.title}
+      message={modalConfig.message}
+      type={modalConfig.type}
+      showCancel={false}
+      confirmText="OK"
+    />
+    </>
   )
 }
 

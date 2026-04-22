@@ -3,13 +3,33 @@ import axios from 'axios';
 import { FaPlus, FaSearch, FaBullhorn, FaEdit, FaTrash, FaEye, FaClock, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
 import AnnouncementFormModal from '../../components/admin/AnnouncementFormModal';
 import DeleteConfirmModal from '../../components/admin/DeleteConfirmModal';
+import ConfirmModal from '../../components/admin/ConfirmModal';
 
-export default function Announcements() {
+export default function Announcements({ searchQuery: globalSearchQuery = '' }) {
   const [announcements, setAnnouncements] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [localSearchTerm, setLocalSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
   const [loading, setLoading] = useState(true);
   
+  const searchTerm = globalSearchQuery || localSearchTerm;
+
+  // Alert Modal State
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
+
+  const showAlert = (title, message, type = 'info') => {
+    setModalConfig({
+      isOpen: true,
+      title,
+      message,
+      type
+    });
+  };
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState(null);
   const [deletingAnnouncement, setDeletingAnnouncement] = useState(null);
@@ -60,11 +80,11 @@ export default function Announcements() {
       await fetchAnnouncements(); // Refresh the list
       setIsFormOpen(false);
       setEditingAnnouncement(null);
-      alert('Announcement saved successfully!');
+      showAlert('Success', 'Announcement saved successfully!', 'success');
     } catch (error) {
       console.error('Error saving announcement:', error.response?.data || error.message);
       const errorMessage = error.response?.data?.message || error.message;
-      alert(`Failed to save announcement: ${errorMessage}`);
+      showAlert('Error', `Failed to save announcement: ${errorMessage}`, 'danger');
     }
   };
 
@@ -73,9 +93,10 @@ export default function Announcements() {
       await axios.delete(`http://localhost:5000/api/announcements/${id}`);
       fetchAnnouncements(); // Refresh the list
       setDeletingAnnouncement(null);
+      showAlert('Success', 'Announcement deleted successfully!', 'success');
     } catch (error) {
       console.error('Error deleting announcement:', error);
-      alert('Failed to delete announcement');
+      showAlert('Error', 'Failed to delete announcement', 'danger');
     }
   };
 
@@ -99,7 +120,7 @@ export default function Announcements() {
               type="text"
               placeholder="Search announcements..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => setLocalSearchTerm(e.target.value)}
               className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:bg-white focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 transition-all outline-none text-sm"
             />
           </div>
@@ -188,6 +209,7 @@ export default function Announcements() {
         onClose={() => { setIsFormOpen(false); setEditingAnnouncement(null); }} 
         onSave={handleSave}
         announcement={editingAnnouncement}
+        showAlert={showAlert}
       />
       <DeleteConfirmModal 
         key={deletingAnnouncement?.id || deletingAnnouncement?._id || 'delete-modal'}
@@ -195,6 +217,16 @@ export default function Announcements() {
         onClose={() => setDeletingAnnouncement(null)} 
         onConfirm={() => handleDelete(deletingAnnouncement.id || deletingAnnouncement._id)}
         itemName={deletingAnnouncement?.title}
+      />
+      <ConfirmModal 
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        showCancel={false}
+        confirmText="OK"
       />
     </div>
   );

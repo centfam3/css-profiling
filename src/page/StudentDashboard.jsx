@@ -22,12 +22,64 @@ export default function StudentDashboard({ user, onLogout }) {
   const location = useLocation()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [notifications, setNotifications] = useState([])
 
   // Derive activePage from location
   const activePage = useMemo(() => {
     const path = location.pathname.split('/').pop()
     return path === 'student-dashboard' ? 'home' : path
   }, [location.pathname])
+
+  const unreadCount = useMemo(() => notifications.filter(n => !n.isRead).length, [notifications])
+
+  // Fetch dynamic notifications for student (with polling)
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!user?.id) return;
+      try {
+        const response = await axios.get(`http://localhost:5000/api/notifications?userId=${user?.id}&role=student`);
+        
+        const formattedNotifs = Array.isArray(response.data) 
+          ? response.data.map(notif => ({
+              ...notif,
+              id: notif._id,
+              timestamp: new Date(notif.timestamp).toLocaleString(),
+            }))
+          : [];
+
+        setNotifications(formattedNotifs);
+      } catch (error) {
+        console.error('Error fetching student notifications:', error);
+      }
+    };
+
+    // Initial fetch
+    fetchNotifications();
+
+    // Polling every 30 seconds
+    const intervalId = setInterval(fetchNotifications, 30000);
+
+    return () => clearInterval(intervalId);
+  }, [user?.id]);
+
+  const handleMarkAsRead = async (id) => {
+    try {
+      await axios.put(`http://localhost:5000/api/notifications/${id}/read`);
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await axios.put(`http://localhost:5000/api/notifications/read-all`, { userId: user?.id, role: 'student' });
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-orange-50">
@@ -43,20 +95,24 @@ export default function StudentDashboard({ user, onLogout }) {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Navbar */}
         <StudentNavbar
-          notifications={mockNotifications}
-          unreadCount={3}
+          notifications={notifications}
+          unreadCount={unreadCount}
           user={user}
           onProfileOpen={() => setIsProfileModalOpen(true)}
           onLogout={onLogout}
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          onMarkAsRead={handleMarkAsRead}
+          onMarkAllAsRead={handleMarkAllAsRead}
         />
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto p-6">
           <Routes>
             <Route path="/" element={<DashboardHome student={user} onViewProfile={() => setIsProfileModalOpen(true)} />} />
-            <Route path="/achievements" element={<MyAchievements student={user} />} />
-            <Route path="/events" element={<EventParticipation user={user} />} />
-            <Route path="/announcements" element={<StudentAnnouncements student={user} />} />
+            <Route path="/achievements" element={<MyAchievements student={user} searchQuery={searchQuery} />} />
+            <Route path="/events" element={<EventParticipation user={user} searchQuery={searchQuery} />} />
+            <Route path="/announcements" element={<StudentAnnouncements student={user} searchQuery={searchQuery} />} />
             <Route path="*" element={<Navigate to="/student-dashboard" replace />} />
           </Routes>
         </main>

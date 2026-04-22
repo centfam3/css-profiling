@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FaTimes, FaPlus, FaTrash, FaSave, FaEye, FaEyeSlash } from 'react-icons/fa';
+import ConfirmModal from './ConfirmModal';
 
 export default function StudentFormModal({ isOpen, onClose, onSave, student }) {
   const initialForm = {
@@ -28,6 +29,13 @@ export default function StudentFormModal({ isOpen, onClose, onSave, student }) {
   const [formData, setFormData] = useState(student || initialForm);
   const [newSkill, setNewSkill] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    onConfirm: () => {},
+    message: ''
+  });
 
   // Reset form when student prop changes or modal opens
   React.useEffect(() => {
@@ -78,11 +86,16 @@ export default function StudentFormModal({ isOpen, onClose, onSave, student }) {
   };
 
   const removeEntry = (key, index) => {
-    if (window.confirm('Are you sure you want to delete this entry?')) {
-      const newList = [...formData[key]];
-      newList.splice(index, 1);
-      setFormData(prev => ({ ...prev, [key]: newList }));
-    }
+    setConfirmModal({
+      isOpen: true,
+      message: 'Are you sure you want to delete this entry?',
+      onConfirm: () => {
+        const newList = [...formData[key]];
+        newList.splice(index, 1);
+        setFormData(prev => ({ ...prev, [key]: newList }));
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   // Skill handlers
@@ -349,6 +362,16 @@ export default function StudentFormModal({ isOpen, onClose, onSave, student }) {
             </button>
           </div>
         </form>
+
+        <ConfirmModal 
+          isOpen={confirmModal.isOpen}
+          onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+          onConfirm={confirmModal.onConfirm}
+          title="Confirm Action"
+          message={confirmModal.message}
+          type="warning"
+          showCancel={true}
+        />
       </div>
     </div>
   );

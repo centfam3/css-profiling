@@ -60,38 +60,87 @@ export default function FacultyDashboard({ user: initialUser, onLogout }) {
     }
   }, [initialUser]);
 
+  // Fetch notifications periodically (polling)
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!user) return;
+      try {
+        const notificationsRes = await axios.get(`http://localhost:5000/api/notifications?role=${user?.role || 'faculty'}`);
+        const formattedNotifs = Array.isArray(notificationsRes.data) 
+          ? notificationsRes.data.map(notif => ({
+              ...notif,
+              id: notif._id,
+              timestamp: new Date(notif.timestamp).toLocaleString(),
+            }))
+          : [];
+        setNotifications(formattedNotifs);
+      } catch (error) {
+        console.error('Error polling notifications:', error);
+      }
+    };
+
+    // Initial fetch
+    fetchNotifications();
+
+    // Set up interval for polling (every 30 seconds)
+    const intervalId = setInterval(fetchNotifications, 30000);
+
+    return () => clearInterval(intervalId);
+  }, [user?.id, user?.role]);
+
   // Fetch data from backend
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       try {
-        const [studentsRes, eventsRes] = await Promise.all([
+        const [studentsRes, eventsRes, announcementsRes] = await Promise.all([
           axios.get('http://localhost:5000/api/students'),
-          axios.get('http://localhost:5000/api/events')
+          axios.get('http://localhost:5000/api/events'),
+          axios.get('http://localhost:5000/api/announcements')
         ]);
-        setStudents(studentsRes.data)
-        setEvents(eventsRes.data)
-        setLoading(false)
+        
+        const fetchedStudents = Array.isArray(studentsRes.data) ? studentsRes.data : [];
+        const sortedStudents = [...fetchedStudents].reverse();
+        
+        setStudents(sortedStudents);
+        setEvents(Array.isArray(eventsRes.data) ? eventsRes.data : []);
+        setLoading(false);
       } catch (error) {
-        console.error('Error fetching data:', error)
-        setStudents([])
-        setEvents([])
-        setLoading(false)
+        console.error('Error fetching data:', error);
+        setStudents([]);
+        setEvents([]);
+        setLoading(false);
       }
+    };
+
+    if (user) {
+      fetchData();
     }
-    fetchData()
-  }, [])
+  }, [user?.id, user?.role]);
 
-  const handleMarkAsRead = (id) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))
+  const handleMarkAsRead = async (id) => {
+    try {
+      await axios.put(`http://localhost:5000/api/notifications/${id}/read`);
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
   }
 
-  const handleMarkAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
+  const handleMarkAllAsRead = async () => {
+    try {
+      await axios.put(`http://localhost:5000/api/notifications/read-all`, { role: user?.role });
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
   }
+
+  const unreadCount = useMemo(() => notifications.filter(n => !n.isRead).length, [notifications]);
 
   const pageTitle = useMemo(() => {
     switch (activePage) {
-      case 'dashboard': return 'Dashboard Overview'
+      case 'dashboard': return 'Dashboard'
       case 'students': return 'Student Management'
       case 'faculty': return 'Faculty Management'
       case 'events': return 'Event Management'
@@ -158,46 +207,59 @@ export default function FacultyDashboard({ user: initialUser, onLogout }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {students.slice(0, 5).map((student) => (
-                  <tr 
-                    key={student.id} 
-                    onClick={() => navigate(`/dashboard/users/${student.id}`)}
-                    className="hover:bg-gray-50 transition-colors cursor-pointer group"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs flex-shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                          {student.firstName.charAt(0)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-800 truncate group-hover:text-indigo-600 transition-colors">{student.firstName} {student.lastName}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[10px] text-gray-400 flex items-center gap-1">
-                              <FaLaptopCode size={10} /> {student.personalInfo?.course}
-                            </span>
-                            <span className="text-gray-300">•</span>
-                            <span className="text-[10px] text-gray-400 flex items-center gap-1">
-                              <FaBookOpen size={10} /> {student.personalInfo?.yearLevel}
-                            </span>
+                {students.length > 0 ? (
+                  students.slice(0, 5).map((student) => (
+                    <tr 
+                      key={student.id || student._id} 
+                      onClick={() => navigate(`/dashboard/users/${student.id}`)}
+                      className="hover:bg-gray-50 transition-colors cursor-pointer group"
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs flex-shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                            {student.firstName ? student.firstName.charAt(0) : '?'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-800 truncate group-hover:text-indigo-600 transition-colors">
+                              {student.firstName || 'Unknown'} {student.lastName || ''}
+                            </p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                                <FaLaptopCode size={10} /> {student.personalInfo?.course || 'N/A'}
+                              </span>
+                              <span className="text-gray-300">•</span>
+                              <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                                <FaBookOpen size={10} /> {student.personalInfo?.yearLevel || 'N/A'}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{student.id}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-1 flex-wrap">
-                        {student.skills?.slice(0, 2).map((skill) => (
-                          <span key={skill} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-semibold">
-                            {skill}
-                          </span>
-                        ))}
-                        {student.skills?.length > 2 && (
-                          <span className="text-[10px] text-gray-400 font-bold">+{student.skills.length - 2}</span>
-                        )}
-                      </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">{student.id || 'N/A'}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex gap-1 flex-wrap">
+                          {student.skills?.slice(0, 2).map((skill) => (
+                            <span key={skill} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-semibold">
+                              {skill}
+                            </span>
+                          ))}
+                          {student.skills?.length > 2 && (
+                            <span className="text-[10px] text-gray-400 font-bold">+{student.skills.length - 2}</span>
+                          )}
+                          {(!student.skills || student.skills.length === 0) && (
+                            <span className="text-[10px] text-gray-300 italic">No skills</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="3" className="px-6 py-10 text-center text-gray-400 italic text-sm">
+                      {loading ? 'Loading students...' : 'No students found.'}
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
@@ -233,6 +295,7 @@ export default function FacultyDashboard({ user: initialUser, onLogout }) {
             onLogout={onLogout}
             searchValue={searchQuery}
             onSearchChange={setSearchQuery}
+            unreadCount={unreadCount}
           />
           <NotificationDropdown 
             isOpen={isNotificationOpen}

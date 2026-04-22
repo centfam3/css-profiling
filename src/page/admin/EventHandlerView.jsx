@@ -3,13 +3,15 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { FaCalendarAlt, FaSearch, FaFileExport, FaEye, FaUsers, FaArrowRight, FaLaptopCode, FaBookOpen } from 'react-icons/fa';
 
-export default function EventHandlerView() {
+export default function EventHandlerView({ searchQuery: globalSearchQuery = '' }) {
   const navigate = useNavigate();
   const [events, setEvents] = useState([]);
   const [students, setStudents] = useState([]);
   const [selectedEventId, setSelectedEventId] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [localSearchTerm, setLocalSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+
+  const searchTerm = globalSearchQuery || localSearchTerm;
 
   // Fetch events and students from backend
   useEffect(() => {
@@ -123,7 +125,7 @@ export default function EventHandlerView() {
               type="text"
               placeholder="Search participants by name or ID..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => setLocalSearchTerm(e.target.value)}
               className="w-full pl-11 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 transition-all outline-none text-xs shadow-sm"
             />
           </div>
@@ -137,7 +139,7 @@ export default function EventHandlerView() {
                 <th className="px-6 py-4">#</th>
                 <th className="px-6 py-4">Participant Information</th>
                 <th className="px-6 py-4">Contact Details</th>
-                <th className="px-6 py-4">Guardian Info</th>
+                <th className="px-6 py-4">Residential Address</th>
                 <th className="px-6 py-4 text-center">Action</th>
               </tr>
             </thead>
@@ -174,8 +176,10 @@ export default function EventHandlerView() {
                     <p className="text-[10px] text-gray-400 mt-0.5">{student.personalInfo?.contact}</p>
                   </td>
                   <td className="px-6 py-4">
-                    <p className="text-xs font-bold text-gray-700">N/A</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">N/A</p>
+                    <p className="text-xs font-bold text-gray-700 truncate max-w-[200px]" title={student.personalInfo?.address}>
+                      {student.personalInfo?.address || 'No address provided'}
+                    </p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{student.personalInfo?.gender}</p>
                   </td>
                   <td className="px-6 py-4 text-center">
                     <button 

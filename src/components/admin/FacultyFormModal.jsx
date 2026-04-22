@@ -50,7 +50,6 @@ export default function FacultyFormModal({ isOpen, onClose, onSave, faculty }) {
     if (!formData.birthdate) newErrors.birthdate = 'Birth date is required';
     if (!formData.program) newErrors.program = 'Program is required';
     if (!formData.position) newErrors.position = 'Position is required';
-    if (!formData.role) newErrors.role = 'Role is required';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -104,7 +103,6 @@ export default function FacultyFormModal({ isOpen, onClose, onSave, faculty }) {
               value={formData.facultyid}
               onChange={handleChange}
               disabled={!!faculty}
-              placeholder="e.g., FAC001"
               className={`w-full px-4 py-2 rounded-lg border transition-all ${
                 errors.facultyid ? 'border-red-500 bg-red-50' : 'border-gray-300'
               } focus:outline-none focus:ring-2 focus:ring-indigo-500 ${faculty ? 'bg-gray-100' : ''}`}
@@ -120,7 +118,6 @@ export default function FacultyFormModal({ isOpen, onClose, onSave, faculty }) {
               name="fullname"
               value={formData.fullname}
               onChange={handleChange}
-              placeholder="e.g., Dr. John Smith"
               className={`w-full px-4 py-2 rounded-lg border transition-all ${
                 errors.fullname ? 'border-red-500 bg-red-50' : 'border-gray-300'
               } focus:outline-none focus:ring-2 focus:ring-indigo-500`}
@@ -136,7 +133,6 @@ export default function FacultyFormModal({ isOpen, onClose, onSave, faculty }) {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              placeholder="e.g., john@school.edu"
               className={`w-full px-4 py-2 rounded-lg border transition-all ${
                 errors.email ? 'border-red-500 bg-red-50' : 'border-gray-300'
               } focus:outline-none focus:ring-2 focus:ring-indigo-500`}
@@ -155,7 +151,6 @@ export default function FacultyFormModal({ isOpen, onClose, onSave, faculty }) {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                placeholder={faculty ? 'Leave empty to keep current password' : 'Enter password'}
                 className={`w-full px-4 py-2 rounded-lg border transition-all ${
                   errors.password ? 'border-red-500 bg-red-50' : 'border-gray-300'
                 } focus:outline-none focus:ring-2 focus:ring-indigo-500`}
@@ -186,8 +181,8 @@ export default function FacultyFormModal({ isOpen, onClose, onSave, faculty }) {
             {errors.birthdate && <p className="text-red-500 text-sm mt-1">{errors.birthdate}</p>}
           </div>
 
-          {/* Program, Position & Role Grid */}
-          <div className="grid grid-cols-3 gap-4">
+          {/* Program & Position Grid */}
+          <div className="grid grid-cols-2 gap-4">
             {/* Program */}
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">Program *</label>
@@ -220,23 +215,6 @@ export default function FacultyFormModal({ isOpen, onClose, onSave, faculty }) {
                 <option value="CS Professor">CS Professor</option>
               </select>
               {errors.position && <p className="text-red-500 text-sm mt-1">{errors.position}</p>}
-            </div>
-
-            {/* Role */}
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Role *</label>
-              <select
-                name="role"
-                value={formData.role}
-                onChange={handleChange}
-                className={`w-full px-4 py-2 rounded-lg border transition-all ${
-                  errors.role ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                } focus:outline-none focus:ring-2 focus:ring-indigo-500`}
-              >
-                <option value="faculty">Regular Faculty</option>
-                <option value="faculty_admin">Faculty with Admin Access</option>
-              </select>
-              {errors.role && <p className="text-red-500 text-sm mt-1">{errors.role}</p>}
             </div>
           </div>
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { FaArrowLeft, FaTrophy, FaCalendarAlt, FaMapMarkerAlt, FaUser, FaPhone, FaEnvelope, FaExclamationTriangle, FaClipboardList, FaCheckCircle, FaLaptopCode, FaBookOpen, FaPlus, FaTrash, FaTimes } from 'react-icons/fa';
+import ConfirmModal from '../../components/admin/ConfirmModal';
 
 export default function StudentDetails() {
   const { id } = useParams();
@@ -12,6 +13,44 @@ export default function StudentDetails() {
   const [isAchievementModalOpen, setIsAchievementModalOpen] = useState(false);
   const [activeAchievementTab, setActiveAchievementTab] = useState('Academic');
   const [addingAchievement, setAddingAchievement] = useState(false);
+
+  // Alert/Confirm Modal State
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'warning',
+    showCancel: true,
+    onConfirm: () => {},
+    confirmText: 'Confirm'
+  });
+
+  const showAlert = (title, message, type = 'info') => {
+    setModalConfig({
+      isOpen: true,
+      title,
+      message,
+      type,
+      showCancel: false,
+      onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })),
+      confirmText: 'OK'
+    });
+  };
+
+  const showConfirm = (title, message, onConfirm, type = 'warning') => {
+    setModalConfig({
+      isOpen: true,
+      title,
+      message,
+      type,
+      showCancel: true,
+      onConfirm: () => {
+        onConfirm();
+        setModalConfig(prev => ({ ...prev, isOpen: false }));
+      },
+      confirmText: 'Confirm'
+    });
+  };
 
   useEffect(() => {
     const fetchStudent = async () => {
@@ -47,36 +86,32 @@ export default function StudentDetails() {
       setTimeout(async () => {
         try {
           const freshResponse = await axios.get(`http://localhost:5000/api/students/${id}`);
-          console.log('🔄 Refetched student:', freshResponse.data);
-          console.log('   Achievements:', freshResponse.data.achievements);
           setStudent(freshResponse.data);
         } catch (err) {
           console.error('Error refetching:', err);
         }
       }, 500);
       
-      alert('Achievement added successfully!');
+      showAlert('Success', 'Achievement added successfully!', 'success');
     } catch (error) {
       console.error('Error adding achievement:', error);
-      alert('Error adding achievement: ' + (error.response?.data?.message || error.message));
+      showAlert('Error', 'Error adding achievement: ' + (error.response?.data?.message || error.message), 'danger');
     } finally {
       setAddingAchievement(false);
     }
   };
 
   const handleDeleteAchievement = async (achievementId) => {
-    if (!confirm('Are you sure you want to delete this achievement?')) {
-      return;
-    }
-
-    try {
-      const response = await axios.delete(`http://localhost:5000/api/students/${id}/achievements/${achievementId}`);
-      setStudent(response.data);
-      alert('Achievement deleted successfully!');
-    } catch (error) {
-      console.error('Error deleting achievement:', error);
-      alert('Error deleting achievement: ' + (error.response?.data?.message || error.message));
-    }
+    showConfirm('Confirm Delete', 'Are you sure you want to delete this achievement?', async () => {
+      try {
+        const response = await axios.delete(`http://localhost:5000/api/students/${id}/achievements/${achievementId}`);
+        setStudent(response.data);
+        showAlert('Success', 'Achievement deleted successfully!', 'success');
+      } catch (error) {
+        console.error('Error deleting achievement:', error);
+        showAlert('Error', 'Error deleting achievement: ' + (error.response?.data?.message || error.message), 'danger');
+      }
+    }, 'danger');
   };
 
   if (loading) {
@@ -138,6 +173,7 @@ export default function StudentDetails() {
           onClose={() => setIsAchievementModalOpen(false)}
           onSave={handleAddAchievement}
           isSubmitting={addingAchievement}
+          showAlert={showAlert}
         />
       )}
 
@@ -436,11 +472,22 @@ export default function StudentDetails() {
           </div>
         </section>
       </div>
+
+      <ConfirmModal 
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={modalConfig.onConfirm}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        showCancel={modalConfig.showCancel}
+        confirmText={modalConfig.confirmText}
+      />
     </div>
   );
 }
 
-function AchievementFormModal({ onClose, onSave, isSubmitting }) {
+function AchievementFormModal({ onClose, onSave, isSubmitting, showAlert }) {
   const [formData, setFormData] = useState({
     title: '',
     category: 'Academic',
@@ -452,11 +499,11 @@ function AchievementFormModal({ onClose, onSave, isSubmitting }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.title.trim()) {
-      alert('Please enter an achievement title');
+      showAlert('Validation Error', 'Please enter an achievement title', 'warning');
       return;
     }
     if (!formData.date) {
-      alert('Please select a date');
+      showAlert('Validation Error', 'Please select a date', 'warning');
       return;
     }
     onSave(formData);

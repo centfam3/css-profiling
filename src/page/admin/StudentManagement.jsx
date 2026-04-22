@@ -5,6 +5,7 @@ import axios from 'axios';
 import StudentFormModal from '../../components/admin/StudentFormModal';
 import FilterPanel from '../../components/admin/FilterPanel';
 import DeleteConfirmModal from '../../components/admin/DeleteConfirmModal';
+import ConfirmModal from '../../components/admin/ConfirmModal';
 import StudentCard from '../../components/admin/StudentCard';
 
 export default function StudentManagement({ searchQuery = '' }) {
@@ -13,6 +14,45 @@ export default function StudentManagement({ searchQuery = '' }) {
   const [allSkills, setAllSkills] = useState([]);
   const [allStudentIds, setAllStudentIds] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Alert/Confirm Modal State
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'warning',
+    showCancel: true,
+    onConfirm: () => {},
+    confirmText: 'Confirm'
+  });
+
+  const showAlert = (title, message, type = 'info') => {
+    setModalConfig({
+      isOpen: true,
+      title,
+      message,
+      type,
+      showCancel: false,
+      onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })),
+      confirmText: 'OK'
+    });
+  };
+
+  const showConfirm = (title, message, onConfirm, type = 'warning') => {
+    setModalConfig({
+      isOpen: true,
+      title,
+      message,
+      type,
+      showCancel: true,
+      onConfirm: () => {
+        onConfirm();
+        setModalConfig(prev => ({ ...prev, isOpen: false }));
+      },
+      confirmText: 'Confirm'
+    });
+  };
+
   const [filters, setFilters] = useState({
     skill: '',
     activity: '',
@@ -150,47 +190,54 @@ export default function StudentManagement({ searchQuery = '' }) {
   };
 
   const handleSaveStudent = async (studentData) => {
-    try {
-      // Validate required fields
-      if (!studentData.firstName || !studentData.lastName) {
-        alert('Student name is required');
-        return;
-      }
-      if (!studentData.personalInfo.email) {
-        alert('Email is required for login');
-        return;
-      }
-      if (!studentData.password) {
-        alert('Password is required for login');
-        return;
-      }
-      if (!studentData.id) {
-        alert('Student ID is required');
-        return;
-      }
-
-      if (editingStudent) {
-        await axios.put(`http://localhost:5000/api/students/${editingStudent.id}`, studentData);
-        alert('Student updated successfully!');
-      } else {
-        // Check if student ID already exists
-        const existingStudent = students.find(s => s.id === studentData.id);
-        if (existingStudent) {
-          alert(`Student ID "${studentData.id}" already exists. Please use a different ID.`);
-          return;
-        }
-        const response = await axios.post('http://localhost:5000/api/students', studentData);
-        alert(`Student created successfully! They can now login with Email: ${studentData.personalInfo.email}`);
-      }
-      
-      setIsFormOpen(false);
-      setEditingStudent(null);
-      fetchStudents(); 
-      fetchAllMetadata(); // Refresh skills and year levels list after save
-    } catch (err) {
-      console.error('Error saving student:', err);
-      alert('Error saving student: ' + (err.response?.data?.message || err.message));
+    // Validate required fields
+    if (!studentData.firstName || !studentData.lastName) {
+      showAlert('Validation Error', 'Student name is required', 'warning');
+      return;
     }
+    if (!studentData.personalInfo.email) {
+      showAlert('Validation Error', 'Email is required for login', 'warning');
+      return;
+    }
+    if (!studentData.password) {
+      showAlert('Validation Error', 'Password is required for login', 'warning');
+      return;
+    }
+    if (!studentData.id) {
+      showAlert('Validation Error', 'Student ID is required', 'warning');
+      return;
+    }
+
+    const title = editingStudent ? 'Confirm Update' : 'Confirm Creation';
+    const message = editingStudent 
+      ? `Are you sure you want to update ${studentData.firstName} ${studentData.lastName}'s information?`
+      : `Are you sure you want to create a new student: ${studentData.firstName} ${studentData.lastName}?`;
+
+    showConfirm(title, message, async () => {
+      try {
+        if (editingStudent) {
+          await axios.put(`http://localhost:5000/api/students/${editingStudent.id}`, studentData);
+          showAlert('Success', 'Student updated successfully!', 'success');
+        } else {
+          // Check if student ID already exists
+          const existingStudent = students.find(s => s.id === studentData.id);
+          if (existingStudent) {
+            showAlert('Duplicate ID', `Student ID "${studentData.id}" already exists. Please use a different ID.`, 'warning');
+            return;
+          }
+          await axios.post('http://localhost:5000/api/students', studentData);
+          showAlert('Success', `Student created successfully! They can now login with Email: ${studentData.personalInfo.email}`, 'success');
+        }
+        
+        setIsFormOpen(false);
+        setEditingStudent(null);
+        fetchStudents(); 
+        fetchAllMetadata();
+      } catch (err) {
+        console.error('Error saving student:', err);
+        showAlert('Error', 'Error saving student: ' + (err.response?.data?.message || err.message), 'danger');
+      }
+    }, editingStudent ? 'info' : 'success');
   };
 
   return (
@@ -268,6 +315,16 @@ export default function StudentManagement({ searchQuery = '' }) {
         onClose={() => setDeletingStudent(null)} 
         onConfirm={() => handleDelete(deletingStudent.id)}
         itemName={`${deletingStudent?.firstName} ${deletingStudent?.lastName}`}
+      />
+      <ConfirmModal 
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={modalConfig.onConfirm}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        showCancel={modalConfig.showCancel}
+        confirmText={modalConfig.confirmText}
       />
     </div>
   );

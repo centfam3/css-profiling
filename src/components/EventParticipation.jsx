@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import EventCard from './EventCard'
 
-export default function EventParticipation({ user }) {
+export default function EventParticipation({ user, searchQuery = '' }) {
   const [activeTab, setActiveTab] = useState('available')
   const [availableEvents, setAvailableEvents] = useState([])
   const [pendingEvents, setPendingEvents] = useState([])
@@ -49,6 +49,19 @@ export default function EventParticipation({ user }) {
     fetchEvents();
   };
 
+  const filterBySearch = (events) => {
+    if (!searchQuery) return events;
+    return events.filter(e => 
+      (e.name || e.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (e.venue || e.location || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (e.description || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  };
+
+  const displayedAvailable = filterBySearch(availableEvents);
+  const displayedPending = filterBySearch(pendingEvents);
+  const displayedAssigned = filterBySearch(assignedEvents);
+
   return (
     <div>
       <h1 className="text-3xl font-bold text-gray-900 mb-6">Event Participation</h1>
@@ -73,7 +86,7 @@ export default function EventParticipation({ user }) {
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
-          Pending Requests {pendingEvents.length > 0 && `(${pendingEvents.length})`}
+          Pending Requests {displayedPending.length > 0 && `(${displayedPending.length})`}
         </button>
         <button
           onClick={() => setActiveTab('assigned')}
@@ -98,35 +111,35 @@ export default function EventParticipation({ user }) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {activeTab === 'available' ? (
-            availableEvents.length > 0 ? (
-              availableEvents.map((event) => (
+            displayedAvailable.length > 0 ? (
+              displayedAvailable.map((event) => (
                 <EventCard key={event.id} event={event} isAssigned={false} user={user} hasPending={false} onEventUpdated={handleEventUpdated} />
               ))
             ) : (
               <div className="col-span-2 p-12 text-center bg-white rounded-lg border border-gray-100">
-                <p className="text-gray-500 font-medium">No available events at the moment</p>
+                <p className="text-gray-500 font-medium">No available events found</p>
                 <p className="text-gray-400 text-sm mt-1">Check back soon for upcoming events!</p>
               </div>
             )
           ) : activeTab === 'pending' ? (
-            pendingEvents.length > 0 ? (
-              pendingEvents.map((event) => (
+            displayedPending.length > 0 ? (
+              displayedPending.map((event) => (
                 <EventCard key={event.id} event={event} isAssigned={false} user={user} hasPending={true} onEventUpdated={handleEventUpdated} />
               ))
             ) : (
               <div className="col-span-2 p-12 text-center bg-white rounded-lg border border-gray-100">
-                <p className="text-gray-500 font-medium">No pending requests</p>
+                <p className="text-gray-500 font-medium">No pending requests found</p>
                 <p className="text-gray-400 text-sm mt-1">Your request approvals will appear here!</p>
               </div>
             )
           ) : (
-            assignedEvents.length > 0 ? (
-              assignedEvents.map((event) => (
+            displayedAssigned.length > 0 ? (
+              displayedAssigned.map((event) => (
                 <EventCard key={event.id} event={event} isAssigned={true} user={user} hasPending={false} onEventUpdated={handleEventUpdated} />
               ))
             ) : (
               <div className="col-span-2 p-12 text-center bg-white rounded-lg border border-gray-100">
-                <p className="text-gray-500 font-medium">You haven't joined any events yet</p>
+                <p className="text-gray-500 font-medium">No assigned events found</p>
                 <p className="text-gray-400 text-sm mt-1">Browse available events to join!</p>
               </div>
             )
@@ -134,12 +147,7 @@ export default function EventParticipation({ user }) {
         </div>
       )}
 
-      {/* Info Box */}
-      <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <p className="text-sm text-blue-700">
-          <span className="font-semibold">📢 Info:</span> Click "Request to Join" to send a request. Your request will be reviewed by admin/faculty before being approved. Only approved requests will appear in "Assigned Events".
-        </p>
-      </div>
+
     </div>
   )
 }

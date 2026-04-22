@@ -1,11 +1,29 @@
 import { useState } from 'react'
 import axios from 'axios'
 import { FaHandPaper, FaCheckCircle, FaClock, FaCalendarAlt, FaMapPin, FaCheck, FaHourglassHalf } from 'react-icons/fa'
+import ConfirmModal from './admin/ConfirmModal'
 
 export default function EventCard({ event, isAssigned = false, user, onEventUpdated, hasPending = false }) {
   const [requesting, setRequesting] = useState(false)
   const [registered, setRegistered] = useState(isAssigned)
   const [pending, setPending] = useState(hasPending)
+  
+  // Alert Modal State
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
+
+  const showAlert = (title, message, type = 'info') => {
+    setModalConfig({
+      isOpen: true,
+      title,
+      message,
+      type
+    });
+  };
 
   const handleRequest = async () => {
     const url = `http://localhost:5000/api/events/${event.id}/request`;
@@ -18,7 +36,7 @@ export default function EventCard({ event, isAssigned = false, user, onEventUpda
     console.log('====================');
     
     if (!user?.id) {
-      alert('Please log in to request for events')
+      showAlert('Login Required', 'Please log in to request for events', 'warning')
       return
     }
 
@@ -34,10 +52,10 @@ export default function EventCard({ event, isAssigned = false, user, onEventUpda
         onEventUpdated(response.data)
       }
 
-      alert('Request sent successfully! Please wait for admin/faculty approval.')
+      showAlert('Success', 'Request sent successfully! Please wait for admin/faculty approval.', 'success')
     } catch (error) {
       console.error('Error requesting for event:', error)
-      alert('Error requesting: ' + (error.response?.data?.message || error.message))
+      showAlert('Error', 'Error requesting: ' + (error.response?.data?.message || error.message), 'danger')
     } finally {
       setRequesting(false)
     }
@@ -118,6 +136,17 @@ export default function EventCard({ event, isAssigned = false, user, onEventUpda
           <FaCheck /> Registered
         </button>
       )}
+
+      <ConfirmModal 
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        showCancel={false}
+        confirmText="OK"
+      />
     </div>
   )
 }

@@ -44,7 +44,7 @@ function AnnouncementCard({ announcement }) {
   )
 }
 
-export default function StudentAnnouncements({ student }) {
+export default function StudentAnnouncements({ student, searchQuery = '' }) {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -81,6 +81,14 @@ export default function StudentAnnouncements({ student }) {
     fetchAnnouncements();
   }, [student?.id]);
 
+  const filteredAnnouncements = announcements.filter(ann => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return ann.title.toLowerCase().includes(query) || 
+           ann.content.toLowerCase().includes(query) ||
+           ann.category.toLowerCase().includes(query);
+  });
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
@@ -98,8 +106,8 @@ export default function StudentAnnouncements({ student }) {
       </div>
 
       <div className="space-y-6">
-        {announcements.length > 0 ? (
-          announcements.map((announcement) => (
+        {filteredAnnouncements.length > 0 ? (
+          filteredAnnouncements.map((announcement) => (
             <AnnouncementCard key={announcement.id} announcement={announcement} />
           ))
         ) : (
@@ -107,8 +115,8 @@ export default function StudentAnnouncements({ student }) {
             <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
               <FaBullhorn className="text-slate-200 text-3xl" />
             </div>
-            <h3 className="text-lg font-bold text-slate-800">No active announcements</h3>
-            <p className="text-slate-400 font-medium mt-1">Check back later for new updates from the administration.</p>
+            <h3 className="text-lg font-bold text-slate-800">No matching announcements found</h3>
+            <p className="text-slate-400 font-medium mt-1">Try adjusting your search query.</p>
           </div>
         )}
       </div>
