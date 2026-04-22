@@ -119,7 +119,7 @@ export default function EventAssignment() {
     }
 
     try {
-      const response = await axios.post(`http://localhost:5000/api/events/${selectedEventId}/register`, {
+      const response = await axios.post(`http://localhost:5000/api/events/${selectedEventId}/request`, {
         studentId: student.id
       });
 
