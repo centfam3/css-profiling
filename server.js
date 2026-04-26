@@ -1508,6 +1508,117 @@ app.get('/api/reports/summary', async (req, res) => {
   }
 });
 
+// GET /api/reports/students-export - Export filtered students as CSV
+app.get('/api/reports/students-export', async (req, res) => {
+  try {
+    console.log('[EXPORT] Starting export with query:', req.query);
+    
+    const { skill, activity, studentId, minGpa } = req.query;
+    let query = {};
+
+    // Apply same filtering logic as /api/students
+    if (skill) {
+      const searchSkill = skill.trim().toLowerCase();
+      query.skills = { $elemMatch: { $regex: searchSkill, $options: 'i' } };
+      console.log('[EXPORT] Filter - Skill:', searchSkill);
+    }
+    if (activity) {
+      const searchActivity = activity.trim().toLowerCase();
+      query.nonAcademicActivities = { $elemMatch: { name: { $regex: searchActivity, $options: 'i' } } };
+      console.log('[EXPORT] Filter - Activity:', searchActivity);
+    }
+    if (studentId) {
+      const searchId = studentId.toString().trim().toLowerCase();
+      query.id = { $regex: `^${searchId}$`, $options: 'i' };
+      console.log('[EXPORT] Filter - Student ID:', searchId);
+    }
+    if (minGpa) {
+      query['academicHistory.gpa'] = { $gte: parseFloat(minGpa) };
+      console.log('[EXPORT] Filter - Min GPA:', minGpa);
+    }
+
+    console.log('[EXPORT] Query object:', JSON.stringify(query));
+    
+    const students = await Student.find(query).sort({ id: 1 });
+    console.log('[EXPORT] Found students:', students.length);
+
+    // Convert to CSV format - export even if no results with appropriate message
+    if (students.length === 0) {
+      console.log('[EXPORT] No students found, returning empty CSV');
+      const headers = ['Student ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Course', 'Year', 'GPA', 'Skills', 'Date Created'];
+      const csvContent = headers.join(',') + '\n' + '# No students found matching the filters';
+      
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="student-report-${new Date().toISOString().split('T')[0]}.csv"`);
+      return res.send(csvContent);
+    }
+
+    // CSV Headers
+    const headers = [
+      'Student ID',
+      'First Name',
+      'Last Name',
+      'Email',
+      'Phone',
+      'Course',
+      'Year',
+      'GPA',
+      'Skills',
+      'Date Created'
+    ];
+
+    // Convert students to CSV rows - safely handle all data types
+    const rows = students.map(student => {
+      const skills = Array.isArray(student.skills) ? student.skills.join('; ') : '';
+      const dateCreated = student.createdAt ? new Date(student.createdAt).toISOString().split('T')[0] : '';
+      
+      return [
+        String(student.id || ''),
+        String(student.firstName || ''),
+        String(student.lastName || ''),
+        String(student.personalInfo?.email || ''),
+        String(student.personalInfo?.phone || ''),
+        String(student.personalInfo?.course || ''),
+        String(student.personalInfo?.year || ''),
+        String(student.gpa || ''),
+        skills,
+        dateCreated
+      ];
+    });
+
+    // Build CSV content with proper escaping
+    const escapeCsvField = (field) => {
+      const str = String(field);
+      // Escape quotes and wrap in quotes if contains comma, quote, or newline
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const csvLines = [
+      headers.map(escapeCsvField).join(','),
+      ...rows.map(row => row.map(escapeCsvField).join(','))
+    ];
+    
+    const csvContent = csvLines.join('\n');
+    
+    console.log('[EXPORT] CSV generated, size:', csvContent.length, 'bytes');
+
+    // Set response headers for download
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="student-report-${new Date().toISOString().split('T')[0]}.csv"`);
+    res.send(csvContent);
+    
+    console.log('[EXPORT] Export completed successfully');
+  } catch (error) {
+    console.error('[EXPORT] Error exporting students:', error);
+    console.error('[EXPORT] Error stack:', error.stack);
+    res.status(500).json({ message: 'Server error', error: error.message, stack: error.stack });
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // ========== FACULTY ENDPOINTS ==========
 
 // GET /api/faculty - Get all faculty

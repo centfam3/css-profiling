@@ -25,10 +25,17 @@ export default function EventAssignment({ searchQuery: globalSearchQuery = '' })
           axios.get('http://localhost:5000/api/events'),
           axios.get('http://localhost:5000/api/students')
         ]);
-        setEvents(eventsRes.data);
-        setStudents(studentsRes.data);
-        if (eventsRes.data.length > 0) {
-          setSelectedEventId(eventsRes.data[0].id);
+        
+        const fetchedEvents = Array.isArray(eventsRes.data) ? eventsRes.data : [];
+        const fetchedStudents = Array.isArray(studentsRes.data) ? studentsRes.data : [];
+        
+        setEvents(fetchedEvents);
+        setStudents(fetchedStudents);
+        
+        if (fetchedEvents.length > 0) {
+          // Priority for selectedEventId: existing ID > first event's id > first event's _id
+          const firstEvent = fetchedEvents[0];
+          setSelectedEventId(firstEvent.id || firstEvent._id);
         }
         setLoading(false);
       } catch (error) {
@@ -40,12 +47,12 @@ export default function EventAssignment({ searchQuery: globalSearchQuery = '' })
   }, []);
 
   const selectedEvent = useMemo(() =>
-    events.find(e => e.id === selectedEventId),
+    events.find(e => (e.id === selectedEventId || e._id === selectedEventId)),
     [events, selectedEventId]
   );
 
   const assignedStudents = useMemo(() =>
-    students.filter(s => selectedEvent?.participants.includes(s.id)),
+    students.filter(s => selectedEvent?.participants?.includes(s.id)),
     [students, selectedEvent]
   );
 
@@ -56,16 +63,34 @@ export default function EventAssignment({ searchQuery: globalSearchQuery = '' })
 
   const candidateStudents = useMemo(() => {
     return students.filter(student => {
-      const isAlreadyAssigned = selectedEvent?.participants.includes(student.id);
-      const hasPendingRequest = selectedEvent?.pendingRequests?.includes(student.id);
-      const fullName = `${student.firstName} ${student.lastName}`.toLowerCase();
-      const matchesSearch = fullName.includes(searchTerm.toLowerCase()) ||
-                            student.id.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesSkill = filterSkill === '' || student.skills?.some(s => s.name?.toLowerCase().includes(filterSkill.toLowerCase()) || s?.toLowerCase?.().includes(filterSkill.toLowerCase()));
+      if (!student) return false;
+      
+      const isAlreadyAssigned = selectedEvent?.participants?.includes(student.id) || false;
+      const hasPendingRequest = selectedEvent?.pendingRequests?.includes(student.id) || false;
+      
+      const firstName = student.firstName || '';
+      const lastName = student.lastName || '';
+      const studentId = student.id || '';
+      const fullName = `${firstName} ${lastName}`.toLowerCase();
+      
+      // Matches global navbar search
+      const matchesGlobal = !globalSearchQuery || 
+                           fullName.includes(globalSearchQuery.toLowerCase()) || 
+                           studentId.toLowerCase().includes(globalSearchQuery.toLowerCase());
+      
+      // Matches local page search
+      const matchesLocal = !localSearchTerm || 
+                          fullName.includes(localSearchTerm.toLowerCase()) || 
+                          studentId.toLowerCase().includes(localSearchTerm.toLowerCase());
+      
+      const matchesSkill = filterSkill === '' || (student.skills && student.skills.some(s => {
+        const skillName = (s.name || s || '').toString().toLowerCase();
+        return skillName.includes(filterSkill.toLowerCase());
+      }));
 
-      return !isAlreadyAssigned && !hasPendingRequest && matchesSearch && matchesSkill;
+      return !isAlreadyAssigned && !hasPendingRequest && matchesGlobal && matchesLocal && matchesSkill;
     });
-  }, [students, selectedEvent, searchTerm, filterSkill]);
+  }, [students, selectedEvent, globalSearchQuery, localSearchTerm, filterSkill]);
 
   const handleApprove = async (studentId) => {
     if (selectedEvent.participants.length >= selectedEvent.maxParticipants) {
@@ -321,183 +346,159 @@ export default function EventAssignment({ searchQuery: globalSearchQuery = '' })
       <div className="flex-1 flex flex-col gap-6 overflow-hidden">
         {/* Pending Requests Section */}
         {pendingRequests.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col max-h-[30%] overflow-hidden">
-            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-yellow-50/30">
-              <div className="flex items-center gap-2">
-                <FaHourglassHalf className="text-yellow-500" />
-                <h3 className="font-bold text-gray-800">Pending Requests</h3>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col min-h-[150px] max-h-[30%] overflow-hidden">
+            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-yellow-50/30">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-yellow-100 text-yellow-600 flex items-center justify-center">
+                  <FaHourglassHalf size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-800 text-sm">Pending Requests</h3>
+                  <p className="text-[10px] text-gray-500 font-medium">Students waiting for approval</p>
+                </div>
               </div>
-              <span className="px-3 py-1 bg-white border border-gray-100 rounded-full text-[10px] font-bold text-gray-500">
+              <span className="px-3 py-1 bg-white border border-yellow-100 rounded-full text-[10px] font-bold text-yellow-600 shadow-sm">
                 {pendingRequests.length} Request(s)
               </span>
             </div>
-            <div className="overflow-y-auto flex-1">
-              <table className="w-full text-left">
-                <thead className="sticky top-0 bg-white text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 z-10">
-                  <tr>
-                    <th className="px-6 py-4">Student</th>
-                    <th className="px-6 py-4">Skills</th>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {pendingRequests.map(student => (
-                    <tr key={student.id} className="hover:bg-yellow-50/30 transition-colors group">
-                      <td className="px-6 py-3">
-                        <div
-                          onClick={() => navigate(`/dashboard/users/${student.id}`)}
-                          className="flex items-center gap-3 cursor-pointer group/item"
+            <div className="overflow-y-auto flex-1 p-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                {pendingRequests.map(student => (
+                  <div key={student.id} className="flex flex-col p-3 bg-white border border-yellow-50 rounded-xl hover:border-yellow-200 hover:shadow-sm transition-all group">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                          {student.firstName ? student.firstName.charAt(0) : '?'}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-gray-800 truncate">
+                            {student.firstName} {student.lastName}
+                          </p>
+                          <p className="text-[9px] text-gray-500 font-medium">{student.id}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handleApprove(student.id)}
+                          className="p-1.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition-all shadow-sm"
+                          title="Approve"
                         >
-                          <div className="w-8 h-8 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center font-bold text-xs flex-shrink-0 group-hover/item:bg-yellow-500 group-hover/item:text-white transition-colors">
-                            {student.firstName.charAt(0)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold text-gray-800 truncate group-hover/item:text-yellow-600 transition-colors">{student.firstName} {student.lastName}</p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-[9px] text-gray-400 flex items-center gap-1">
-                                <FaLaptopCode size={10} /> {student.personalInfo?.course}
-                              </span>
-                              <span className="text-gray-300">•</span>
-                              <span className="text-[9px] text-gray-400 flex items-center gap-1">
-                                <FaBookOpen size={10} /> {student.personalInfo?.yearLevel}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-3">
-                        <div className="flex gap-1">
-                          {student.skills?.slice(0, 2).map((skill, idx) => (
-                            <span key={idx} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full text-[9px] font-bold">
-                              {skill.name || skill}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-6 py-3">
-                        <span className="px-2 py-0.5 bg-yellow-100 text-yellow-600 rounded-full text-[9px] font-bold">Pending</span>
-                      </td>
-                      <td className="px-6 py-3 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleApprove(student.id)}
-                            className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition-all shadow-sm shadow-green-100"
-                            title="Approve Request"
-                          >
-                            <FaCheck size={14} />
-                          </button>
-                          <button
-                            onClick={() => handleReject(student.id)}
-                            className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-all shadow-sm shadow-red-100"
-                            title="Reject Request"
-                          >
-                            <FaBan size={14} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          <FaCheck size={10} />
+                        </button>
+                        <button
+                          onClick={() => handleReject(student.id)}
+                          className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-all shadow-sm"
+                          title="Reject"
+                        >
+                          <FaBan size={10} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {student.skills?.slice(0, 2).map((skill, idx) => (
+                        <span key={idx} className="px-1.5 py-0.5 bg-indigo-50 text-indigo-500 rounded-full text-[8px] font-bold">
+                          {skill.name || skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
 
         {/* Top Section — Assigned Students */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col max-h-[35%] overflow-hidden">
-          <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/30">
-            <div className="flex items-center gap-2">
-              <FaCheckCircle className="text-green-500" />
-              <h3 className="font-bold text-gray-800">Assigned Students</h3>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col min-h-[200px] max-h-[40%] overflow-hidden">
+          <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-green-50/20">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-green-100 text-green-600 flex items-center justify-center">
+                <FaCheckCircle size={20} />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-800 text-sm">Assigned Students</h3>
+                <p className="text-[10px] text-gray-500 font-medium">Currently registered for this event</p>
+              </div>
             </div>
-            <span className="px-3 py-1 bg-white border border-gray-100 rounded-full text-[10px] font-bold text-gray-500">
-              {assignedStudents.length} Students
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 bg-white border border-green-100 rounded-full text-[10px] font-bold text-green-600 shadow-sm">
+                {assignedStudents.length} / {selectedEvent?.maxParticipants || 0} Slots
+              </span>
+            </div>
           </div>
-          <div className="overflow-y-auto flex-1">
-            <table className="w-full text-left">
-              <thead className="sticky top-0 bg-white text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 z-10">
-                <tr>
-                  <th className="px-6 py-4">Student</th>
-                  <th className="px-6 py-4">Skills</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {assignedStudents.map(student => (
-                  <tr key={student.id} className="hover:bg-red-50/30 transition-colors group">
-                    <td className="px-6 py-3">
-                      <div
-                        onClick={() => navigate(`/dashboard/users/${student.id}`)}
-                        className="flex items-center gap-3 cursor-pointer group/item"
-                      >
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs flex-shrink-0 group-hover/item:bg-indigo-600 group-hover/item:text-white transition-colors">
-                          {student.firstName.charAt(0)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-gray-800 truncate group-hover/item:text-indigo-600 transition-colors">{student.firstName} {student.lastName}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[9px] text-gray-400 flex items-center gap-1">
-                              <FaLaptopCode size={10} /> {student.personalInfo?.course}
-                            </span>
-                            <span className="text-gray-300">•</span>
-                            <span className="text-[9px] text-gray-400 flex items-center gap-1">
-                              <FaBookOpen size={10} /> {student.personalInfo?.yearLevel}
-                            </span>
-                          </div>
-                        </div>
+          <div className="overflow-y-auto flex-1 p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+              {assignedStudents.map(student => (
+                <div key={student.id} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl hover:border-red-100 hover:bg-red-50/30 transition-all group">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs flex-shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                      {student.firstName ? student.firstName.charAt(0) : '?'}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-gray-800 truncate group-hover:text-indigo-600 transition-colors">
+                        {student.firstName} {student.lastName}
+                      </p>
+                      <p className="text-[9px] text-gray-500 font-medium truncate">{student.id}</p>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <span className="text-[8px] px-1.5 py-0.5 bg-indigo-50 text-indigo-500 rounded-full font-bold">
+                          {student.personalInfo?.course}
+                        </span>
                       </div>
-                    </td>
-                    <td className="px-6 py-3">
-                      <div className="flex gap-1">
-                        {student.skills?.slice(0, 2).map((skill, idx) => (
-                          <span key={idx} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full text-[9px] font-bold">
-                            {skill.name || skill}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-6 py-3">
-                      <span className="px-2 py-0.5 bg-green-50 text-green-600 rounded-full text-[9px] font-bold">Confirmed</span>
-                    </td>
-                    <td className="px-6 py-3 text-right">
-                      <button
-                        onClick={() => handleRemove(student.id)}
-                        className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                      >
-                        <FaTimes size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {assignedStudents.length === 0 && (
-                  <tr>
-                    <td colSpan="4" className="px-6 py-10 text-center text-gray-400 text-sm italic">
-                      No students assigned to this event yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleRemove(student.id)}
+                    className="p-2 text-gray-300 hover:text-red-600 hover:bg-white rounded-lg transition-all flex-shrink-0 opacity-0 group-hover:opacity-100"
+                    title="Remove from Event"
+                  >
+                    <FaTimes size={12} />
+                  </button>
+                </div>
+              ))}
+              {assignedStudents.length === 0 && (
+                <div className="col-span-full py-8 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                  <FaUsers className="mx-auto text-gray-300 mb-2" size={24} />
+                  <p className="text-xs text-gray-400 font-medium">No students assigned yet.</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Bottom Section — Add Students / Candidates */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex-1 flex flex-col overflow-hidden">
-          <div className="p-5 border-b border-gray-100 space-y-4">
-            <div className="flex items-center gap-2">
-              <FaUsers className="text-indigo-500" />
-              <h3 className="font-bold text-gray-800">Add Students / Candidates</h3>
+          <div className="p-4 border-b border-gray-100 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FaUsers className="text-indigo-500" />
+                <h3 className="font-bold text-gray-800 text-sm">Add Students / Candidates</h3>
+              </div>
+              <div className="flex items-center gap-3">
+                {globalSearchQuery && (
+                  <span className="text-[10px] bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                    <FaFilter size={8} /> Navbar filter active: "{globalSearchQuery}"
+                  </span>
+                )}
+                {(localSearchTerm || filterSkill) && (
+                  <button 
+                    onClick={() => {
+                      setLocalSearchTerm('');
+                      setFilterSkill('');
+                    }}
+                    className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 bg-indigo-50 px-2 py-0.5 rounded-full transition-colors"
+                  >
+                    <FaTimes size={8} /> Clear Local Filters
+                  </button>
+                )}
+              </div>
             </div>
             <div className="flex gap-4">
               <div className="relative flex-1">
                 <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
                 <input
                   type="text"
-                  placeholder="Search candidates..."
-                  value={searchTerm}
+                  placeholder="Search by name or ID..."
+                  value={localSearchTerm}
                   onChange={(e) => setLocalSearchTerm(e.target.value)}
                   className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:bg-white focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 transition-all outline-none text-xs"
                 />

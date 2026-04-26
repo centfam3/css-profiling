@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { FaSearch, FaFilter, FaTimes, FaTrophy, FaPlus, FaChevronRight } from 'react-icons/fa';
+import { FaSearch, FaFilter, FaTimes, FaTrophy, FaPlus, FaChevronRight, FaDownload } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import StudentFormModal from '../../components/admin/StudentFormModal';
@@ -189,6 +189,43 @@ export default function StudentManagement({ searchQuery = '' }) {
     }
   };
 
+  const handleExportReport = async () => {
+    try {
+      if (filteredStudents.length === 0) {
+        showAlert('No Data', 'No students to export. Please adjust your filters.', 'warning');
+        return;
+      }
+
+      // Build query parameters from current filters
+      const params = new URLSearchParams();
+      if (filters.skill) params.append('skill', filters.skill);
+      if (filters.activity) params.append('activity', filters.activity);
+      if (filters.studentId) params.append('studentId', filters.studentId);
+      if (filters.minGpa) params.append('minGpa', filters.minGpa);
+
+      // Make request to export endpoint
+      const response = await axios.get(`http://localhost:5000/api/reports/students-export?${params.toString()}`, {
+        responseType: 'blob'
+      });
+
+      // Create blob and trigger download
+      const blob = new Blob([response.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `student-report-${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      showAlert('Success', `Exported ${filteredStudents.length} students to CSV file!`, 'success');
+    } catch (err) {
+      console.error('Error exporting students:', err);
+      showAlert('Error', 'Failed to export students: ' + (err.response?.data?.message || err.message), 'danger');
+    }
+  };
+
   const handleSaveStudent = async (studentData) => {
     // Validate required fields
     if (!studentData.firstName || !studentData.lastName) {
@@ -248,12 +285,37 @@ export default function StudentManagement({ searchQuery = '' }) {
           <h2 className="text-xl font-bold text-gray-800">Student Profiles</h2>
           <p className="text-xs text-gray-400 font-medium mt-1">Manage and track student information</p>
         </div>
-        <button 
-          onClick={() => { setEditingStudent(null); setIsFormOpen(true); }}
-          className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all text-sm font-bold shadow-lg shadow-indigo-100"
-        >
-          <FaPlus /> Add Student
-        </button>
+        <div className="flex gap-3">
+          <button 
+            onClick={handleExportReport}
+            className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all text-sm font-bold shadow-lg shadow-green-100"
+          >
+            <FaDownload /> Export Report
+          </button>
+          <button 
+            onClick={() => { setEditingStudent(null); setIsFormOpen(true); }}
+            className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all text-sm font-bold shadow-lg shadow-indigo-100"
+          >
+            <FaPlus /> Add Student
+          </button>
+        </div>
+      </div>
+
+      {/* Student Count Card */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl shadow-sm border border-blue-200">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-blue-600 font-medium mb-2">Total Students in System</p>
+            <h3 className="text-4xl font-black text-blue-700">{students.length}</h3>
+            <p className="text-xs text-blue-500 mt-1">All students loaded and ready</p>
+          </div>
+          <div className="text-right">
+            <div className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
+              {students.length === 1000 ? '✅' : '⚠️'}
+            </div>
+            <p className="text-xs text-blue-600 font-bold mt-2">{students.length}/1000</p>
+          </div>
+        </div>
       </div>
 
       {/* Filter Panel */}
