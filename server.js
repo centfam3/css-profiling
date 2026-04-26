@@ -590,7 +590,7 @@ app.post('/api/login', async (req, res) => {
 // GET /api/students - Get all with filtering
 app.get('/api/students', async (req, res) => {
   try {
-    const { skill, activity, studentId, minGpa } = req.query;
+    const { skill, activity, studentId, minGpa, year } = req.query;
     let query = {};
 
     if (skill) {
@@ -608,6 +608,9 @@ app.get('/api/students', async (req, res) => {
     }
     if (minGpa) {
       query['academicHistory.gpa'] = { $gte: parseFloat(minGpa) };
+    }
+    if (year) {
+      query['personalInfo.year'] = parseInt(year);
     }
 
     const students = await Student.find(query);
@@ -1513,7 +1516,7 @@ app.get('/api/reports/students-export', async (req, res) => {
   try {
     console.log('[EXPORT] Starting export with query:', req.query);
     
-    const { skill, activity, studentId, minGpa } = req.query;
+    const { skill, activity, studentId, minGpa, year } = req.query;
     let query = {};
 
     // Apply same filtering logic as /api/students
@@ -1535,6 +1538,10 @@ app.get('/api/reports/students-export', async (req, res) => {
     if (minGpa) {
       query['academicHistory.gpa'] = { $gte: parseFloat(minGpa) };
       console.log('[EXPORT] Filter - Min GPA:', minGpa);
+    }
+    if (year) {
+      query['personalInfo.year'] = parseInt(year);
+      console.log('[EXPORT] Filter - Year:', year);
     }
 
     console.log('[EXPORT] Query object:', JSON.stringify(query));

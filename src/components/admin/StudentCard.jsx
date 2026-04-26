@@ -5,6 +5,13 @@ import { useNavigate } from 'react-router-dom';
 export default function StudentCard({ student, onEdit, onDelete }) {
   const navigate = useNavigate();
   // Uses props: student.firstName, student.skills, student.personalInfo, etc.
+  const getYearLabel = (year) => {
+    if (!year) return 'N/A';
+    const numYear = parseInt(year);
+    const suffixes = { 1: 'st', 2: 'nd', 3: 'rd' };
+    return `${numYear}${suffixes[numYear] || 'th'} Year`;
+  };
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-indigo-100 p-6 hover:shadow-xl hover:border-indigo-200 transition-all group flex flex-col h-full">
       <div className="flex items-center gap-4 mb-6">
@@ -25,12 +32,12 @@ export default function StudentCard({ student, onEdit, onDelete }) {
         <div className="grid grid-cols-2 gap-4">
           <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
             <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Year Level</p>
-            <p className="text-xs font-bold text-gray-700">{student.personalInfo?.yearLevel || 'N/A'}</p>
+            <p className="text-xs font-bold text-gray-700">{getYearLabel(student.personalInfo?.year)}</p>
           </div>
           <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
             <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Birth Date</p>
             <p className="text-xs font-bold text-indigo-600">
-              {student.personalInfo?.birthdate ? new Date(student.personalInfo.birthdate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
+              {student.personalInfo?.dateOfBirth ? new Date(student.personalInfo.dateOfBirth).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
             </p>
           </div>
         </div>

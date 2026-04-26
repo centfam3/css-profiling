@@ -57,7 +57,8 @@ export default function StudentManagement({ searchQuery = '' }) {
     skill: '',
     activity: '',
     studentId: '',
-    minGpa: ''
+    minGpa: '',
+    year: ''
   });
   
   // Filter students based on searchQuery (name or ID)
@@ -122,6 +123,7 @@ export default function StudentManagement({ searchQuery = '' }) {
       if (queryFilters.activity) params.append('activity', queryFilters.activity);
       if (queryFilters.studentId) params.append('studentId', queryFilters.studentId);
       if (queryFilters.minGpa) params.append('minGpa', queryFilters.minGpa);
+      if (queryFilters.year) params.append('year', queryFilters.year);
 
       const response = await axios.get(`http://localhost:5000/api/students?${params.toString()}`);
       setStudents(response.data);
@@ -144,7 +146,8 @@ export default function StudentManagement({ searchQuery = '' }) {
         skill: '',
         activity: '',
         studentId: value,
-        minGpa: ''
+        minGpa: '',
+        year: ''
       };
       setFilters(singleIdFilters);
       fetchStudents(singleIdFilters);
@@ -155,7 +158,7 @@ export default function StudentManagement({ searchQuery = '' }) {
     setFilters(updatedFilters);
     
     // Immediately fetch with updated filters for select fields
-    if (name === 'skill') {
+    if (name === 'skill' || name === 'year') {
       fetchStudents(updatedFilters);
     }
   };
@@ -166,6 +169,7 @@ export default function StudentManagement({ searchQuery = '' }) {
 
   // Remove the useEffect for auto-apply to avoid double calls
   // and potential closure issues
+  // and potential closure issues
   /*
   useEffect(() => {
     fetchStudents(filters);
@@ -173,7 +177,7 @@ export default function StudentManagement({ searchQuery = '' }) {
   */
 
   const handleClearFilters = () => {
-    const cleared = { skill: '', activity: '', studentId: '', minGpa: '' };
+    const cleared = { skill: '', activity: '', studentId: '', minGpa: '', year: '' };
     setFilters(cleared);
     fetchStudents(cleared);
   };
@@ -202,6 +206,7 @@ export default function StudentManagement({ searchQuery = '' }) {
       if (filters.activity) params.append('activity', filters.activity);
       if (filters.studentId) params.append('studentId', filters.studentId);
       if (filters.minGpa) params.append('minGpa', filters.minGpa);
+      if (filters.year) params.append('year', filters.year);
 
       // Make request to export endpoint
       const response = await axios.get(`http://localhost:5000/api/reports/students-export?${params.toString()}`, {

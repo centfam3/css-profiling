@@ -14,7 +14,7 @@ export default function FilterPanel({ filters, onFilterChange, onApply, onClear,
         <span>Filter Students</span>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <div>
           <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Skill</label>
           <select
@@ -27,6 +27,21 @@ export default function FilterPanel({ filters, onFilterChange, onApply, onClear,
             {availableSkills.map(skill => (
               <option key={skill} value={skill}>{skill}</option>
             ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Year Level</label>
+          <select
+            name="year"
+            value={filters.year}
+            onChange={handleChange}
+            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-4 focus:ring-indigo-50 outline-none cursor-pointer"
+          >
+            <option value="">All Years</option>
+            <option value="1">1st Year</option>
+            <option value="2">2nd Year</option>
+            <option value="3">3rd Year</option>
+            <option value="4">4th Year</option>
           </select>
         </div>
         <div>
@@ -87,6 +102,11 @@ export default function FilterPanel({ filters, onFilterChange, onApply, onClear,
         {filters.skill && (
           <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-bold border border-indigo-100 flex items-center gap-2">
             Skill: {filters.skill}
+          </span>
+        )}
+        {filters.year && (
+          <span className="px-3 py-1 bg-purple-50 text-purple-600 rounded-full text-[10px] font-bold border border-purple-100 flex items-center gap-2">
+            Year: {filters.year}
           </span>
         )}
         {filters.activity && (
